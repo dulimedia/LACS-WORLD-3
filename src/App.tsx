@@ -1107,7 +1107,7 @@ function App() {
               <SceneCapture sceneRef={sceneRef} glRef={glRef} />
 
               {/* 3D Scene - Testing Single Environment Mesh */}
-              <SingleEnvironmentMesh isMobile={deviceCapabilities.isMobile} />
+              <SingleEnvironmentMesh />
 
               {/* Palm Trees */}
               <PalmTreeInstancerSimple visible={true} />

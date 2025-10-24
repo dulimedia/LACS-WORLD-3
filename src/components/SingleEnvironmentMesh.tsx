@@ -5,11 +5,7 @@ import { makeFacesBehave } from '../utils/makeFacesBehave';
 import { fixInvertedFacesSelective } from '../utils/fixInvertedFacesSelective';
 import { generateSceneReport, printReport } from '../debug/MeshInspector';
 
-interface SingleEnvironmentMeshProps {
-  isMobile?: boolean;
-}
-
-export function SingleEnvironmentMesh({ isMobile = false }: SingleEnvironmentMeshProps = {}) {
+export function SingleEnvironmentMesh() {
   const others = useGLTF('/models/environment/others2.glb');
   const frame = useGLTF('/models/environment/frame-raw-14.glb');
   const roof = useGLTF('/models/environment/roof and walls.glb');
@@ -18,7 +14,7 @@ export function SingleEnvironmentMesh({ isMobile = false }: SingleEnvironmentMes
   useEffect(() => {
     if (others.scene) {
       console.log('🔵 Processing Others2 model...');
-      makeFacesBehave(others.scene, true, isMobile);
+      makeFacesBehave(others.scene, true);
       
       let meshCount = 0;
       let shadowCount = 0;
@@ -61,7 +57,7 @@ export function SingleEnvironmentMesh({ isMobile = false }: SingleEnvironmentMes
   useEffect(() => {
     if (frame.scene) {
       console.log('🔵 Processing Frame model...');
-      makeFacesBehave(frame.scene, false, isMobile);
+      makeFacesBehave(frame.scene);
       console.log('🔧 Running selective face fixer on Frame...');
       fixInvertedFacesSelective(frame.scene);
       console.log('✅ Frame configured with safe selective face fixing');
@@ -71,7 +67,7 @@ export function SingleEnvironmentMesh({ isMobile = false }: SingleEnvironmentMes
   useEffect(() => {
     if (roof.scene) {
       console.log('🔵 Processing Roof model...');
-      makeFacesBehave(roof.scene, false, isMobile);
+      makeFacesBehave(roof.scene);
       
       let meshCount = 0;
       roof.scene.traverse((child) => {
@@ -99,7 +95,7 @@ export function SingleEnvironmentMesh({ isMobile = false }: SingleEnvironmentMes
   useEffect(() => {
     if (stages.scene) {
       console.log('🔵 Processing Stages model...');
-      makeFacesBehave(stages.scene, false, isMobile);
+      makeFacesBehave(stages.scene);
       
       let meshCount = 0;
       stages.scene.traverse((child) => {

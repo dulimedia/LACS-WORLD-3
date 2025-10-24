@@ -12,7 +12,12 @@ export interface DeviceCapabilities {
   devicePixelRatio: number;
 }
 
+let cachedCapabilities: DeviceCapabilities | null = null;
+
 export const detectDevice = (): DeviceCapabilities => {
+  if (cachedCapabilities) {
+    return cachedCapabilities;
+  }
   const userAgent = navigator.userAgent;
   const isIOS = /iPad|iPhone|iPod/.test(userAgent);
   const isAndroid = /Android/.test(userAgent);
@@ -47,7 +52,7 @@ export const detectDevice = (): DeviceCapabilities => {
 
   console.log(`📱 Device Memory: ${deviceMemoryGB}GB, Ultra-Low: ${isUltraLowMemory}, Mobile: ${isMobile}`);
 
-  return {
+  cachedCapabilities = {
     isMobile,
     isIOS,
     isAndroid,
@@ -59,6 +64,8 @@ export const detectDevice = (): DeviceCapabilities => {
     supportsWebGL2,
     devicePixelRatio: Math.min(window.devicePixelRatio || 1, 2)
   };
+  
+  return cachedCapabilities;
 };
 
 export const getMobileOptimizedSettings = (device: DeviceCapabilities) => {

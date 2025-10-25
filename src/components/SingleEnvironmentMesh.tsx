@@ -15,10 +15,19 @@ export function SingleEnvironmentMesh({ tier }: SingleEnvironmentMeshProps) {
   const isMobile = tier.startsWith('mobile');
   const isMobileLow = tier === 'mobile-low';
   
-  const others = useGLTF('/models/environment/others2.glb', !isMobileLow);
-  const frame = useGLTF('/models/environment/frame-raw-14.glb', !isMobileLow);
-  const roof = useGLTF('/models/environment/roof and walls.glb', !isMobileLow);
-  const stages = useGLTF('/models/environment/stages.glb', !isMobileLow);
+  if (isMobileLow) {
+    return (
+      <mesh position={[0, -1, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <planeGeometry args={[500, 500]} />
+        <meshBasicMaterial color="#87CEEB" />
+      </mesh>
+    );
+  }
+  
+  const others = useGLTF('/models/environment/others2.glb');
+  const frame = useGLTF('/models/environment/frame-raw-14.glb');
+  const roof = useGLTF('/models/environment/roof and walls.glb');
+  const stages = useGLTF('/models/environment/stages.glb');
   
   const shadowsEnabled = gl && (gl as any).shadowMap?.enabled !== false;
 
@@ -151,15 +160,6 @@ export function SingleEnvironmentMesh({ tier }: SingleEnvironmentMeshProps) {
       console.log(`✅ Stages configured: ${meshCount} meshes`);
     }
   }, [stages.scene, isMobileLow]);
-
-  if (isMobileLow) {
-    return (
-      <mesh position={[0, -1, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <planeGeometry args={[500, 500]} />
-        <meshBasicMaterial color="#87CEEB" />
-      </mesh>
-    );
-  }
 
   return (
     <>

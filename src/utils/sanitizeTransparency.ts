@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { log } from './debugFlags';
 
 export function sanitizeTransparency(root: THREE.Object3D, boostOpacity = false) {
   let fixed = 0;
@@ -11,14 +12,14 @@ export function sanitizeTransparency(root: THREE.Object3D, boostOpacity = false)
     const hasTransparent = mats.some((m: any) => m && m.transparent);
     if (hasTransparent && o.frustumCulled !== false) {
       o.frustumCulled = false;
-      console.log(`🔧 Disabled frustum culling on transparent mesh: ${o.name || 'unnamed'}`);
+      log.verbose(`🔧 Disabled frustum culling on transparent mesh: ${o.name || 'unnamed'}`);
       fixed++;
     }
     
     mats.forEach((m: any) => {
       if (!m) return;
       
-      console.log(`🔍 Material on ${o.name || 'unnamed'}: transparent=${m.transparent}, opacity=${m.opacity}, depthWrite=${m.depthWrite}, depthTest=${m.depthTest}, side=${m.side}`);
+      log.verbose(`🔍 Material on ${o.name || 'unnamed'}: transparent=${m.transparent}, opacity=${m.opacity}, depthWrite=${m.depthWrite}, depthTest=${m.depthTest}, side=${m.side}`);
       
       if (m.transparent && m.opacity >= 0.99) {
         console.warn(`⚠️ Disabling unnecessary transparency on ${o.name || 'unnamed'} (opacity=${m.opacity})`);
@@ -44,19 +45,19 @@ export function sanitizeTransparency(root: THREE.Object3D, boostOpacity = false)
         if (boostOpacity && m.opacity < 0.7) {
           const oldOpacity = m.opacity;
           m.opacity = Math.min(0.85, m.opacity * 1.5);
-          console.log(`🔆 Boosted opacity on ${o.name || 'unnamed'}: ${oldOpacity.toFixed(2)} → ${m.opacity.toFixed(2)}`);
+          log.verbose(`🔆 Boosted opacity on ${o.name || 'unnamed'}: ${oldOpacity.toFixed(2)} → ${m.opacity.toFixed(2)}`);
           fixed++;
         }
         
         if (m.alphaTest === 0) {
           m.depthWrite = true;
           m.depthTest = true;
-          console.log(`🔧 Fixed transparent material on: ${o.name || 'unnamed'}`);
+          log.verbose(`🔧 Fixed transparent material on: ${o.name || 'unnamed'}`);
           fixed++;
         } else {
           m.transparent = false;
           m.alphaToCoverage = true;
-          console.log(`🔧 Converted to cutout material on: ${o.name || 'unnamed'}`);
+          log.verbose(`🔧 Converted to cutout material on: ${o.name || 'unnamed'}`);
           fixed++;
         }
         m.needsUpdate = true;
@@ -64,7 +65,7 @@ export function sanitizeTransparency(root: THREE.Object3D, boostOpacity = false)
     });
   });
   
-  console.log(`✅ Fixed ${fixed} transparent materials`);
+  log.verbose(`✅ Fixed ${fixed} transparent materials`);
   if (potentialIssues > 0) console.error(`🚨 Found ${potentialIssues} nearly invisible materials!`);
 }
 

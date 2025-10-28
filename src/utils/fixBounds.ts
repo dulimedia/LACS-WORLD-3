@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { log } from './debugFlags';
 
 export function fixBounds(root: THREE.Object3D) {
   let fixed = 0;
@@ -14,7 +15,7 @@ export function fixBounds(root: THREE.Object3D) {
       fixed++;
     }
   });
-  console.log(`✅ Fixed ${fixed} bounding volumes`);
+  log.verbose(`✅ Fixed ${fixed} bounding volumes`);
 }
 
 export function disableFrustumCulling(root: THREE.Object3D, meshNamePattern?: RegExp) {
@@ -25,5 +26,5 @@ export function disableFrustumCulling(root: THREE.Object3D, meshNamePattern?: Re
     o.frustumCulled = false;
     disabled++;
   });
-  console.log(`✅ Disabled frustum culling on ${disabled} meshes`);
+  log.verbose(`✅ Disabled frustum culling on ${disabled} meshes`);
 }

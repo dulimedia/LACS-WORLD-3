@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { log } from './debugFlags';
 
 export type FaceFixStats = {
   meshesScanned: number;
@@ -58,11 +59,11 @@ export function fixInvertedFacesSelective(root: THREE.Object3D, opts?: {
     stats.facesInverted += invertedCount;
 
     if (logEachMesh) {
-      console.log(`🔍 ${o.name || 'unnamed'}: ${invertedCount}/${faces} faces inverted (${invPct.toFixed(2)}%)`);
+      log.verbose(`🔍 ${o.name || 'unnamed'}: ${invertedCount}/${faces} faces inverted (${invPct.toFixed(2)}%)`);
     }
 
     if (invPct > maxInvertPercentToFix) {
-      if (logEachMesh) console.warn(`  ↪️ Skip selective: majority inverted (${invPct.toFixed(1)}%). Handle via global flip/mirror logic.`);
+      if (logEachMesh) log.warn(`  ↪️ Skip selective: majority inverted (${invPct.toFixed(1)}%). Handle via global flip/mirror logic.`);
       return;
     }
 
@@ -142,6 +143,6 @@ export function fixInvertedFacesSelective(root: THREE.Object3D, opts?: {
     }
   });
 
-  console.log(`🧹 SelectiveFix summary: meshes=${stats.meshesScanned}, faces=${stats.facesTotal}, inverted=${stats.facesInverted}, flipped=${stats.facesFlipped}`);
+  log.verbose(`🧹 SelectiveFix summary: meshes=${stats.meshesScanned}, faces=${stats.facesTotal}, inverted=${stats.facesInverted}, flipped=${stats.facesFlipped}`);
   return stats;
 }

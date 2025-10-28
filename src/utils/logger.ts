@@ -43,6 +43,35 @@ class Logger {
   error(...args: any[]) {
     if (!this.categories.ERROR) return;
     console.error('❌', ...args);
+    // Persist errors to localStorage for mobile debugging
+    this.persistError(args);
+  }
+
+  private persistError(args: any[]) {
+    try {
+      const errors = JSON.parse(localStorage.getItem('app_errors') || '[]');
+      errors.push({
+        timestamp: new Date().toISOString(),
+        message: args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' ')
+      });
+      // Keep last 50 errors
+      if (errors.length > 50) errors.shift();
+      localStorage.setItem('app_errors', JSON.stringify(errors));
+    } catch (e) {
+      // Silent fail if localStorage is full
+    }
+  }
+
+  getPersistedErrors() {
+    try {
+      return JSON.parse(localStorage.getItem('app_errors') || '[]');
+    } catch {
+      return [];
+    }
+  }
+
+  clearPersistedErrors() {
+    localStorage.removeItem('app_errors');
   }
 
   group(category: LogCategory, emoji: string, label: string) {

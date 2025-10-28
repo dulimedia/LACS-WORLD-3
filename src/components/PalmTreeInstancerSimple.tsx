@@ -1,6 +1,7 @@
 import React, { Suspense, useMemo, useRef, useCallback } from 'react';
 import { useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
+import { log } from '../utils/debugFlags';
 
 interface PalmTreeInstancerSimpleProps {
   visible?: boolean;
@@ -57,7 +58,7 @@ const PalmTreeLoader = React.memo(() => {
       }
     });
     
-    console.log(`🌴 Processed ${positions.length} placeholder positions (one-time processing)`);
+    log.verbose(`🌴 Processed ${positions.length} placeholder positions (one-time processing)`);
     
     // Cache the results
     processedDataRef.current = {

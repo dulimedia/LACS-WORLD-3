@@ -53,6 +53,38 @@
   </head>
   <body class="no-select">
     <div id="root"></div>
+    <script>
+      const crashLogs = [];
+      const logCrash = (msg) => {
+        const entry = `[${new Date().toISOString()}] ${msg}`;
+        crashLogs.push(entry);
+        console.error('CRASH LOG:', msg);
+        localStorage.setItem('crashLogs', JSON.stringify(crashLogs));
+      };
+      
+      const logMemory = () => {
+        if (performance.memory) {
+          const used = (performance.memory.usedJSHeapSize / 1048576).toFixed(1);
+          const limit = (performance.memory.jsHeapSizeLimit / 1048576).toFixed(1);
+          logCrash(`Memory: ${used}MB / ${limit}MB (${Math.round(used/limit*100)}%)`);
+        }
+      };
+      
+      window.addEventListener('error', (e) => {
+        logCrash(`Error: ${e.message} at ${e.filename}:${e.lineno}`);
+        logMemory();
+      });
+      
+      window.addEventListener('unhandledrejection', (e) => {
+        logCrash(`Unhandled Promise: ${e.reason}`);
+        logMemory();
+      });
+      
+      logCrash('App starting...');
+      logMemory();
+      
+      setInterval(logMemory, 10000);
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

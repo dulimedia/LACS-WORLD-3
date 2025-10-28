@@ -5,6 +5,9 @@ import { makeFacesBehave } from '../utils/makeFacesBehave';
 import { fixInvertedFacesSelective } from '../utils/fixInvertedFacesSelective';
 import { generateSceneReport, printReport } from '../debug/MeshInspector';
 import { useThree } from '@react-three/fiber';
+import { simplifyGeometryForMobile, shouldSimplifyMesh } from '../utils/simplifyGeometry';
+import { PerfFlags } from '../perf/PerfFlags';
+import { log } from '../utils/debugFlags';
 
 interface SingleEnvironmentMeshProps {
   tier: string;
@@ -12,33 +15,22 @@ interface SingleEnvironmentMeshProps {
 
 export function SingleEnvironmentMesh({ tier }: SingleEnvironmentMeshProps) {
   const { gl } = useThree();
-  const isMobile = tier.startsWith('mobile');
-  const isMobileLow = tier === 'mobile-low';
   
-  if (isMobileLow) {
-    return (
-      <mesh position={[0, -1, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <planeGeometry args={[500, 500]} />
-        <meshBasicMaterial color="#87CEEB" />
-      </mesh>
-    );
-  }
+  const isSmallViewport = window.innerWidth < 600 || window.innerHeight < 600;
+  const isMobile = tier.startsWith('mobile') || PerfFlags.isMobile || isSmallViewport;
+  
+  console.log(`🎮 SingleEnvironmentMesh: tier=${tier}, isMobile=${isMobile}, viewport=${window.innerWidth}x${window.innerHeight}, PerfFlags.isMobile=${PerfFlags.isMobile}`);
   
   const others = useGLTF('/models/environment/others2.glb');
   const frame = useGLTF('/models/environment/frame-raw-14.glb');
   const roof = useGLTF('/models/environment/roof and walls.glb');
   const stages = useGLTF('/models/environment/stages.glb');
   
-  const shadowsEnabled = gl && (gl as any).shadowMap?.enabled !== false;
+  const shadowsEnabled = gl && (gl as any).shadowMap?.enabled !== false && !isMobile;
 
   useEffect(() => {
-    if (isMobileLow) {
-      console.log('🔵 Mobile-low tier: Skipping environment models to save memory');
-      return;
-    }
-    
     if (others.scene) {
-      console.log('🔵 Processing Others2 model...');
+      log.info('🔵 Processing Others2 model...');
       makeFacesBehave(others.scene, true);
       
       let meshCount = 0;
@@ -51,7 +43,14 @@ export function SingleEnvironmentMesh({ tier }: SingleEnvironmentMeshProps) {
           
           if (mesh.geometry && mesh.geometry.attributes.position) {
             const vertCount = mesh.geometry.attributes.position.count;
-            console.log(`  Mesh: ${mesh.name || 'unnamed'} (${vertCount} vertices)`);
+            log.verbose(`  Mesh: ${mesh.name || 'unnamed'} (${vertCount} vertices)`);
+            
+            if (shouldSimplifyMesh(mesh, isMobile)) {
+              const originalVerts = mesh.geometry.attributes.position.count;
+              mesh.geometry = simplifyGeometryForMobile(mesh.geometry, 0.3);
+              const newVerts = mesh.geometry.attributes.position.count;
+              console.log(`📉 Simplified ${mesh.name}: ${originalVerts} → ${newVerts} vertices`);
+            }
           }
           
           if (shadowsEnabled) {
@@ -68,7 +67,7 @@ export function SingleEnvironmentMesh({ tier }: SingleEnvironmentMeshProps) {
               }
               
               if (mat.normalMap) {
-                console.log(`  📄 Removed normalMap from ${mesh.name || 'unnamed'}`);
+                log.verbose(`  📄 Removed normalMap from ${mesh.name || 'unnamed'}`);
                 delete mat.normalMap;
               }
               if (mat.roughnessMap) delete mat.roughnessMap;
@@ -79,27 +78,23 @@ export function SingleEnvironmentMesh({ tier }: SingleEnvironmentMeshProps) {
           }
         }
       });
-      console.log(`✅ Others2 configured: ${meshCount} meshes, ${shadowCount} shadow-enabled`);
+      log.info(`✅ Others2 configured: ${meshCount} meshes, ${shadowCount} shadow-enabled`);
     }
-  }, [others.scene, isMobileLow]);
+  }, [others.scene, isMobile]);
 
   useEffect(() => {
-    if (isMobileLow) return;
-    
     if (frame.scene) {
-      console.log('🔵 Processing Frame model...');
+      log.info('🔵 Processing Frame model...');
       makeFacesBehave(frame.scene);
-      console.log('🔧 Running selective face fixer on Frame...');
+      log.verbose('🔧 Running selective face fixer on Frame...');
       fixInvertedFacesSelective(frame.scene);
-      console.log('✅ Frame configured with safe selective face fixing');
+      log.info('✅ Frame configured with safe selective face fixing');
     }
-  }, [frame.scene, isMobileLow]);
+  }, [frame.scene, isMobile]);
 
   useEffect(() => {
-    if (isMobileLow) return;
-    
     if (roof.scene) {
-      console.log('🔵 Processing Roof model...');
+      log.info('🔵 Processing Roof model...');
       makeFacesBehave(roof.scene);
       
       let meshCount = 0;
@@ -124,15 +119,13 @@ export function SingleEnvironmentMesh({ tier }: SingleEnvironmentMeshProps) {
           }
         }
       });
-      console.log(`✅ Roof configured: ${meshCount} meshes`);
+      log.info(`✅ Roof configured: ${meshCount} meshes`);
     }
-  }, [roof.scene, isMobileLow]);
+  }, [roof.scene, isMobile]);
 
   useEffect(() => {
-    if (isMobileLow) return;
-    
     if (stages.scene) {
-      console.log('🔵 Processing Stages model...');
+      log.info('🔵 Processing Stages model...');
       makeFacesBehave(stages.scene);
       
       let meshCount = 0;
@@ -157,9 +150,9 @@ export function SingleEnvironmentMesh({ tier }: SingleEnvironmentMeshProps) {
           }
         }
       });
-      console.log(`✅ Stages configured: ${meshCount} meshes`);
+      log.info(`✅ Stages configured: ${meshCount} meshes`);
     }
-  }, [stages.scene, isMobileLow]);
+  }, [stages.scene, isMobile]);
 
   return (
     <>

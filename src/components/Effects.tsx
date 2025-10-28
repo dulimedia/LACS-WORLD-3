@@ -43,8 +43,8 @@ export function Effects({ tier, enabled = true }: EffectsProps) {
         luminanceInfluence={0.3}
       /> */}
       <Bloom
-        intensity={0.2}
-        luminanceThreshold={0.95}
+        intensity={0.8}
+        luminanceThreshold={0.7}
         luminanceSmoothing={0.9}
         mipmapBlur
       />

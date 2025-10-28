@@ -1,12 +1,18 @@
 export type Tier = "mobileLow" | "desktopHigh";
 
 export const PerfFlags = (() => {
-  // Enhanced mobile detection
-  const isMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-  const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+  const userAgent = navigator.userAgent;
+  const isMobileUA = /Mobi|Android|iPhone|iPad|iPod/i.test(userAgent);
+  const isIOS = /iPhone|iPad|iPod/i.test(userAgent);
+  const isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+  const isNarrowViewport = window.innerWidth < 768;
+  const hasLowMemory = (navigator as any).deviceMemory ? (navigator as any).deviceMemory <= 4 : false;
+  const isSimulatorSize = window.innerWidth < 600 || window.innerHeight < 600;
+  
+  const isMobile = isMobileUA || (isTouchDevice && isNarrowViewport) || hasLowMemory || isSimulatorSize;
   const tier: Tier = isMobile ? "mobileLow" : "desktopHigh";
 
-  console.log(`📱 Device: ${tier} (mobile: ${isMobile}, iOS: ${isIOS})`);
+  console.log(`📱 Device: ${tier} (mobile: ${isMobile}, iOS: ${isIOS}, viewport: ${window.innerWidth}x${window.innerHeight})`);
 
   return {
     tier,

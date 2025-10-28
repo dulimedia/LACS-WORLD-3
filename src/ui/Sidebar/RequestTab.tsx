@@ -177,20 +177,30 @@ ${formData.message}
                             >
                               {isFloorExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
                             </button>
-                            <label className="flex items-center space-x-2 flex-1 cursor-pointer" onClick={(e) => e.preventDefault()}>
-                              <input
-                                type="checkbox"
-                                key={`${floorKey}-${selectedSuites.size}-${allFloorSelected}`}
-                                checked={allFloorSelected}
-                                onChange={(e) => {
+                            <div className="flex items-center space-x-2 flex-1">
+                              <label className="flex items-center cursor-pointer" onClick={(e) => e.stopPropagation()}>
+                                <input
+                                  type="checkbox"
+                                  key={`${floorKey}-${selectedSuites.size}-${allFloorSelected}`}
+                                  checked={allFloorSelected}
+                                  onChange={(e) => {
+                                    e.stopPropagation();
+                                    toggleAllInFloor(building, floorName, unitKeys);
+                                  }}
+                                  className="rounded border-black/20 w-4 h-4"
+                                />
+                              </label>
+                              <span 
+                                className="text-xs font-medium cursor-pointer"
+                                onClick={(e) => {
                                   e.stopPropagation();
-                                  toggleAllInFloor(building, floorName, unitKeys);
+                                  toggleFloor(floorKey);
                                 }}
-                                className="rounded border-black/20 w-4 h-4"
-                              />
-                              <span className="text-xs font-medium">{floorName}</span>
+                              >
+                                {floorName}
+                              </span>
                               <span className="text-xs text-black/40">({uniqueUnits.length})</span>
-                            </label>
+                            </div>
                           </div>
                           
                           {isFloorExpanded && (

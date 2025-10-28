@@ -3,23 +3,24 @@ import { fixMirrors } from './fixMirrors';
 import { sanitizeTransparency } from './sanitizeTransparency';
 import { fixBounds } from './fixBounds';
 import { validateGeometry } from './validateGeometry';
+import { log } from './debugFlags';
 
 export function makeFacesBehave(root: THREE.Object3D, boostOpacity = false) {
-  console.log('🔧 Running makeFacesBehave diagnostic suite...');
+  log.verbose('🔧 Running makeFacesBehave diagnostic suite...');
   
-  console.log('Step 1: Fixing mirrored geometry and normals...');
+  log.verbose('Step 1: Fixing mirrored geometry and normals...');
   fixMirrors(root);
   
-  console.log('Step 2: Sanitizing transparent materials...');
+  log.verbose('Step 2: Sanitizing transparent materials...');
   sanitizeTransparency(root, boostOpacity);
   
-  console.log('Step 3: Fixing bounding volumes...');
+  log.verbose('Step 3: Fixing bounding volumes...');
   fixBounds(root);
   
-  console.log('Step 4: Validating geometry for NaN/Infinity...');
+  log.verbose('Step 4: Validating geometry for NaN/Infinity...');
   validateGeometry(root);
   
-  console.log('Step 5: Setting safe material defaults...');
+  log.verbose('Step 5: Setting safe material defaults...');
   let invisibleFaces = 0;
   let cullingIssues = 0;
   let keptDoubleSide = 0;
@@ -37,7 +38,7 @@ export function makeFacesBehave(root: THREE.Object3D, boostOpacity = false) {
       }
       
       if (m.side === THREE.DoubleSide) {
-        console.log(`✅ Keeping DoubleSide culling on: ${o.name || 'unnamed'} (prevents missing faces)`);
+        log.verbose(`✅ Keeping DoubleSide culling on: ${o.name || 'unnamed'} (prevents missing faces)`);
         keptDoubleSide++;
       }
       
@@ -48,10 +49,10 @@ export function makeFacesBehave(root: THREE.Object3D, boostOpacity = false) {
     });
   });
   
-  if (switchedToFrontSide > 0) console.log(`🔄 Switched ${switchedToFrontSide} frame materials to FrontSide`);
-  console.log(`✅ Kept ${keptDoubleSide} DoubleSide materials (safe rendering)`);
-  if (invisibleFaces > 0) console.warn(`⚠️ Found ${invisibleFaces} invisible materials`);
-  if (cullingIssues > 0) console.warn(`⚠️ Found ${cullingIssues} BackSide materials (may be invisible!)`);
+  if (switchedToFrontSide > 0) log.verbose(`🔄 Switched ${switchedToFrontSide} frame materials to FrontSide`);
+  log.verbose(`✅ Kept ${keptDoubleSide} DoubleSide materials (safe rendering)`);
+  if (invisibleFaces > 0) log.warn(`⚠️ Found ${invisibleFaces} invisible materials`);
+  if (cullingIssues > 0) log.warn(`⚠️ Found ${cullingIssues} BackSide materials (may be invisible!)`);
   
-  console.log('✅ makeFacesBehave complete!');
+  log.verbose('✅ makeFacesBehave complete!');
 }

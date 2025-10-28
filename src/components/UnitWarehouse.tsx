@@ -92,6 +92,11 @@ const SingleModelGLB: React.FC<{
   const hasLogged = useRef(false);
   const { gl } = useThree();
 
+  if (!modelUrl) {
+    console.error('❌ Missing modelUrl for:', fileName);
+    return null;
+  }
+
   const useDraco = true;
   const { scene, materials } = useGLTF(modelUrl, useDraco);
 
@@ -275,6 +280,11 @@ const SingleModelFBX: React.FC<{
   const [loadError, setLoadError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const hasLogged = useRef(false);
+
+  if (!modelUrl) {
+    console.error('❌ Missing modelUrl for FBX:', fileName);
+    return null;
+  }
 
   const scene = useFBX(modelUrl);
   const materials = {};
@@ -497,22 +507,43 @@ const UnitWarehouseComponent: React.FC<UnitWarehouseProps> = ({
   const [areBoxesLoaded, setAreBoxesLoaded] = useState(false);
   const shadowsComputed = useRef(false);
 
-  const allModels = useMemo(() => [
-    'environment/accessory concrete.glb',
-    'environment/hq sidewalk 2.glb',
-    'environment/road.glb',
-    'environment/stages.glb',
-    'environment/transparent buildings.glb',
-    'environment/transparents sidewalk.glb',
-    'environment/white wall.glb',
-    'environment/frame-raw-14.glb',
-    'environment/roof and walls.glb',
-    'environment/maryland street .glb',
-    'environment/beaudry ave.glb'
-  ], []);
+  const allModels = useMemo(() => {
+    const isMobile = typeof window !== 'undefined' && /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
+    
+    if (isMobile) {
+      console.log('📱 Mobile: Loading essential models only (3/11)');
+      return [
+        'environment/frame-raw-14.glb',
+        'environment/roof and walls.glb',
+        'environment/road.glb'
+      ];
+    }
+    
+    return [
+      'environment/accessory concrete.glb',
+      'environment/hq sidewalk 2.glb',
+      'environment/road.glb',
+      'environment/stages.glb',
+      'environment/transparent buildings.glb',
+      'environment/transparents sidewalk.glb',
+      'environment/white wall.glb',
+      'environment/frame-raw-14.glb',
+      'environment/roof and walls.glb',
+      'environment/maryland street .glb',
+      'environment/beaudry ave.glb'
+    ];
+  }, []);
 
   const boxFiles = useMemo(() => {
     const boxFiles = [];
+    const isMobile = typeof window !== 'undefined' && /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
+    
+    // MOBILE OPTIMIZATION: Skip loading box files on mobile to prevent Safari crashes
+    if (isMobile) {
+      logger.log('GLB', '📱', 'Mobile detected - skipping unit boxes to prevent memory crash');
+      return [];
+    }
+    
     for (const key in FALLBACK_UNIT_DATA) {
       const unit = FALLBACK_UNIT_DATA[key];
       if (unit.glb && unit.glb.length > 0) {
@@ -526,11 +557,14 @@ const UnitWarehouseComponent: React.FC<UnitWarehouseProps> = ({
 
   const handleModelLoad = useCallback((model: LoadedModel) => {
     loadedModelsRef.current.push(model);
+    const totalModels = allModels.length + boxFiles.length;
+    const loadedCount = loadedModelsRef.current.length + loadedBoxModelsCollection.current.length;
+    console.log(`📦 Model loaded: ${model.name} (${loadedCount}/${totalModels})`);
     if (onLoadingProgress) {
-      const totalModels = allModels.length + boxFiles.length;
-      const loadedCount = loadedModelsRef.current.length + loadedBoxModelsCollection.current.length;
       onLoadingProgress(loadedCount, totalModels);
       if (loadedModelsRef.current.length === allModels.length) setModelsLoaded(true); 
+    } else {
+      console.warn('⚠️ onLoadingProgress callback is undefined!');
     }
   }, [onLoadingProgress, allModels.length, boxFiles.length]);
 
@@ -554,10 +588,14 @@ const UnitWarehouseComponent: React.FC<UnitWarehouseProps> = ({
 
     loadedBoxModelsCollection.current = [...loadedBoxModelsCollection.current, model];
 
+    const totalModels = allModels.length + boxFiles.length;
+    const loadedCount = loadedModelsRef.current.length + loadedBoxModelsCollection.current.length;
+    console.log(`📦 Box model loaded: ${unitId} (${loadedCount}/${totalModels})`);
+    
     if (onLoadingProgress) {
-      const totalModels = allModels.length + boxFiles.length;
-      const loadedCount = loadedModelsRef.current.length + loadedBoxModelsCollection.current.length;
       onLoadingProgress(loadedCount, totalModels);
+    } else {
+      console.warn('⚠️ onLoadingProgress callback is undefined for box models!');
     }
 
     if (loadedBoxModelsCollection.current.length === boxFiles.length) {

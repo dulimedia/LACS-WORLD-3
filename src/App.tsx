@@ -48,8 +48,12 @@ import { useCsvUnitData } from './hooks/useCsvUnitData';
 import { emitEvent, getTimestamp } from './lib/events';
 import { validateAllMaterials, setupRendererSafety } from './dev/MaterialValidator';
 import { runDuplicateAudit } from './dev/DuplicateAudit';
+import { logger } from './utils/logger';
 import { RootCanvas } from './ui/RootCanvas';
 import type { Tier } from './lib/graphics/tier';
+import { ErrorLogDisplay } from './components/ErrorLogDisplay';
+import { PerfFlags } from './perf/PerfFlags';
+import { PerformanceProfiler } from './debug/PerformanceProfiler';
 
 
 // Component to capture scene and gl refs + setup safety
@@ -94,7 +98,7 @@ function AdaptivePixelRatio() {
 }
 
 // Google Sheets CSV data source - Updated to new spreadsheet
-const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRBerrxFj5qKyqlWidn983mMQWCNBBsl824Nr8qSiHNqNaIKAr-RLEhDP_P2TuVnewkLms8EFdBiY2T/pub?output=csv';
+const CSV_URL = '/unit-data.csv';
 
 // Legacy HDRI Environment component - kept for fallback but not used by default
 const LegacyHDRIEnvironment = React.memo(() => {
@@ -432,7 +436,7 @@ function App() {
     shadowNormalBias: 0.70,
     shadowMapSize: 4096
   });
-  const [renderTier, setRenderTier] = useState<Tier>('mobile-low');
+  const [renderTier, setRenderTier] = useState<Tier>(PerfFlags.tier === 'mobileLow' ? 'mobile-low' : 'desktop-high');
   const [debugState, setDebugState] = useState<DebugPanelState>({
     tier: renderTier,
     ao: true,
@@ -611,16 +615,48 @@ function App() {
     }
   }, [modelsLoading]);
 
-  // Fallback: hide loading screen after 12 seconds if something goes wrong (Safari iOS safety)
+  // Aggressive fallback for mobile Safari - if loading takes too long, bail out
   useEffect(() => {
+    const timeout = deviceCapabilities.isMobile ? 15000 : 20000; // Give mobile more time
     const fallbackTimer = setTimeout(() => {
-      setLoadingProgress(100);
-      setLoadingPhase('complete');
-      setEffectsReady(true);
-      setTimeout(() => setModelsLoading(false), 300);
-    }, 12000);
+      if (loadingPhase !== 'complete') {
+        console.error('⏱️ Loading timeout - forcing completion');
+        console.error('Loading timeout exceeded', timeout, 'ms - device:', deviceCapabilities);
+        setLoadingProgress(100);
+        setLoadingPhase('complete');
+        setEffectsReady(true);
+        setTimeout(() => setModelsLoading(false), 300);
+      }
+    }, timeout);
     
     return () => clearTimeout(fallbackTimer);
+  }, [deviceCapabilities, loadingPhase]);
+
+  // Handle WebGL context loss (common on mobile Safari)
+  useEffect(() => {
+    const handleContextLost = (event: Event) => {
+      event.preventDefault();
+      console.error('⚠️ WebGL context lost! Attempting recovery...');
+      setModelsLoading(true);
+    };
+
+    const handleContextRestored = () => {
+      console.log('✅ WebGL context restored!');
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
+    };
+
+    const canvas = document.querySelector('canvas');
+    if (canvas) {
+      canvas.addEventListener('webglcontextlost', handleContextLost);
+      canvas.addEventListener('webglcontextrestored', handleContextRestored);
+      
+      return () => {
+        canvas.removeEventListener('webglcontextlost', handleContextLost);
+        canvas.removeEventListener('webglcontextrestored', handleContextRestored);
+      };
+    }
   }, []);
 
   // Handle window resize for proper canvas resizing
@@ -1130,6 +1166,9 @@ function App() {
               {/* Mobile Performance Monitor */}
               <MobilePerformanceMonitor />
 
+              {/* Performance Profiler - press Ctrl+P to toggle */}
+              <PerformanceProfiler />
+
               {/* Post-processing Effects - disable when path tracer active */}
               {effectsReady && debugState.ao && !debugState.pathtracer && (
                 <Effects tier={renderTier} enabled={debugState.ao} />
@@ -1337,6 +1376,9 @@ function App() {
         state={debugState}
         onChange={(updates) => setDebugState((prev) => ({ ...prev, ...updates }))}
       />
+      
+      {/* Error Log Display - Shows persisted errors for mobile debugging */}
+      <ErrorLogDisplay />
         </div>  {/* Close app-layout */}
       </div>  {/* Close app-viewport */}
     </SafariErrorBoundary>

@@ -66,6 +66,35 @@ function createWebGLRenderer(canvas: HTMLCanvasElement, tier: string): THREE.Web
   renderer.setPixelRatio(isMobile ? 1.0 : Math.min(window.devicePixelRatio, 2));
   renderer.setSize(window.innerWidth, window.innerHeight);
   
+  canvas.addEventListener('webglcontextlost', (e) => {
+    e.preventDefault();
+    console.error('❌ WebGL context lost! Showing fallback...');
+    localStorage.setItem('webglContextLost', 'true');
+    
+    const banner = document.createElement('div');
+    banner.style.cssText = `
+      position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+      background: rgba(0,0,0,0.9); color: white; padding: 20px;
+      border-radius: 8px; font-family: sans-serif; text-align: center;
+      z-index: 99999; max-width: 80%;
+    `;
+    banner.innerHTML = `
+      <h2>⚠️ Graphics Error</h2>
+      <p>Your device ran out of graphics memory.</p>
+      <button onclick="location.reload()" style="
+        padding: 10px 20px; margin-top: 10px; cursor: pointer;
+        background: #4CAF50; color: white; border: none; border-radius: 4px;
+      ">Reload Page</button>
+    `;
+    document.body.appendChild(banner);
+  }, false);
+  
+  canvas.addEventListener('webglcontextrestored', () => {
+    console.log('✅ WebGL context restored');
+    localStorage.removeItem('webglContextLost');
+    location.reload();
+  }, false);
+  
   return renderer;
 }
 

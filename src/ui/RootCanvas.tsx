@@ -37,6 +37,13 @@ export function RootCanvas({ children, gl: glProp, onTierChange, ...canvasProps 
   }, [onTierChange]);
 
   const createRenderer = useCallback(async (canvas: HTMLCanvasElement) => {
+    if (!canvas) {
+      console.error('❌ Canvas element is null/undefined!');
+      throw new Error('Canvas not ready');
+    }
+
+    console.log('✅ Canvas element ready, creating renderer...');
+
     if (typeof glProp === 'function') {
       return (glProp as (canvas: HTMLCanvasElement) => unknown)(canvas);
     }

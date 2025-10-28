@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { log } from './debugFlags';
 
 export function validateGeometry(root: THREE.Object3D) {
   let bad = 0;
@@ -21,7 +22,7 @@ export function validateGeometry(root: THREE.Object3D) {
   if (bad) {
     console.error(`❌ Found ${bad} meshes with NaN/Infinity positions:`, badMeshes);
   } else {
-    console.log(`✅ All geometry validated (no NaN positions)`);
+    log.verbose(`✅ All geometry validated (no NaN positions)`);
   }
   return bad === 0;
 }

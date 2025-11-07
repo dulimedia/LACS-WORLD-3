@@ -43,17 +43,23 @@ export function SingleEnvironmentMesh({ tier }: SingleEnvironmentMeshProps) {
   }));
   
   // For desktop, load all at once
-  // For mobile, only load minimal essential models (frame only)
+  // For mobile, only load minimal essential models (frame only - no others, roof, or stages)
   const others = !isMobile ? useGLTF('/models/environment/others2.glb') : { scene: null };
-  const frame = useGLTF('/models/environment/frame-raw-14.glb'); // Always load frame (essential)
+  const frame = !isMobile ? useGLTF('/models/environment/frame-raw-14.glb') : { scene: null }; // Skip even frame on iOS
   const roof = !isMobile ? useGLTF('/models/environment/roof and walls.glb') : { scene: null };
-  const stages = { scene: null }; // Skip stages entirely on all devices to save memory
+  const stages = !isMobile ? useGLTF('/models/environment/stages.glb') : { scene: null }; // Load stages on desktop only
+  
+  console.log('📱 SingleEnvironmentMesh:', { isMobile, tier, loadingModels: !isMobile ? 'all' : 'none (iOS)' });
   
   const shadowsEnabled = gl && (gl as any).shadowMap?.enabled !== false && !isMobile;
 
   // Sequential model loading for mobile
   useEffect(() => {
+    // CRITICAL FIX: Skip ALL model loading on mobile to prevent crash
     if (!isMobile) return; // Desktop uses normal useGLTF loading
+    
+    console.log('📱 Mobile detected: SKIPPING model loading to prevent crash');
+    return; // Exit early - don't load anything
     
     console.log('📱 Mobile detected: Starting sequential model loading...');
     

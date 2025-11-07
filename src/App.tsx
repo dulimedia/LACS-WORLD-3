@@ -362,6 +362,7 @@ const DetailsSidebar: React.FC<{
 // RendererSetup removed - EnvHDRI handles all renderer configuration
 
 function App() {
+  const [canvasReady, setCanvasReady] = useState(false);
   const { selectedUnit, hoveredUnit, setSelectedUnit, setHoveredUnit } = useUnitStore();
   const { drawerOpen, setDrawerOpen, selectedUnitKey, getUnitData, unitDetailsOpen, setUnitDetailsOpen, show3DPopup, setShow3DPopup, hoveredUnitKey } = useExploreState();
   const { setCameraControlsRef } = useGLBState();
@@ -435,6 +436,18 @@ function App() {
   // Camera controls ref for navigation
   const orbitControlsRef = useRef<CameraControls>(null);
   
+  // CRITICAL FIX: Delay Canvas mount by 3000ms to let page load settle (iOS requires this)
+  useEffect(() => {
+    const delay = PerfFlags.isIOS ? 3000 : 500; // 3 seconds for iOS to fully settle
+    console.log('🚀 Canvas delay:', delay + 'ms', 'iOS:', PerfFlags.isIOS);
+    
+    const timer = setTimeout(() => {
+      console.log('✅ Canvas ready - mounting WebGL');
+      setCanvasReady(true);
+    }, delay);
+    return () => clearTimeout(timer);
+  }, []);
+
   // Mobile device detection and optimization settings
   const deviceCapabilities = useMemo(() => {
     const caps = detectDevice();
@@ -448,10 +461,10 @@ function App() {
   }, []);
   const mobileSettings = useMemo(() => getMobileOptimizedSettings(deviceCapabilities), [deviceCapabilities]);
   
-  // Shadow-enabled renderer configuration
+  // Shadow-enabled renderer configuration (iOS-optimized)
   const glConfig = useMemo(() => {
-    return {
-      powerPreference: "high-performance",
+    const config: any = {
+      powerPreference: PerfFlags.isIOS ? "low-power" : "high-performance",
       antialias: false,
       alpha: false,
       logarithmicDepthBuffer: false,
@@ -461,6 +474,12 @@ function App() {
       premultipliedAlpha: false,
       failIfMajorPerformanceCaveat: false,
     };
+    
+    if (PerfFlags.isIOS) {
+      config.precision = "mediump";
+    }
+    
+    return config;
   }, []);
   
   // Initialize memory manager for mobile devices
@@ -552,8 +571,8 @@ function App() {
     }
   }, [setCameraControlsRef]);
   
-  // Use new CSV-based data fetching
-  const { data: csvUnitData, loading: isUnitDataLoading, error } = useCsvUnitData(CSV_URL);
+  // Use new CSV-based data fetching (skip on iOS to reduce memory)
+  const { data: csvUnitData, loading: isUnitDataLoading, error } = useCsvUnitData(PerfFlags.isIOS ? '' : CSV_URL);
   
   // Initialize viewer and emit ready event when models are loaded
   useEffect(() => {
@@ -709,8 +728,13 @@ function App() {
   // Get explore state actions
   const { setUnitsData, setUnitsIndex } = useExploreState();
 
-  // Integrate CSV data into explore state
+  // Integrate CSV data into explore state (skip on iOS)
   useEffect(() => {
+    if (PerfFlags.isIOS) {
+      console.log('📱 iOS: Skipping CSV data processing to save memory');
+      return;
+    }
+    
     if (hasValidUnitData && csvUnitData) {
       
       // Convert CSV data to UnitRecord format for explore state
@@ -936,10 +960,23 @@ function App() {
     if (loadingInitialized.current) return;
     loadingInitialized.current = true;
     
+    console.log('⏳ Loading initialized, iOS:', PerfFlags.isIOS);
     setLoadingPhase('initializing');
     setLoadingProgress(5);
     
-    // Simulate early progress to show activity
+    // iOS: Skip simulated progress entirely to reduce re-renders
+    if (PerfFlags.isIOS) {
+      console.log('📱 iOS: Fast-track loading to prevent crash');
+      setTimeout(() => {
+        console.log('📱 iOS: Loading complete');
+        setLoadingPhase('complete');
+        setLoadingProgress(100);
+        setModelsLoading(false);
+      }, 500);
+      return;
+    }
+    
+    // Desktop: Normal loading simulation
     const earlyProgress = setInterval(() => {
       setLoadingProgress(prev => {
         if (prev < 15) return prev + 1;
@@ -1067,8 +1104,24 @@ function App() {
 
 
         
+        {/* Mobile placeholder - no 3D canvas */}
+        {PerfFlags.isMobile && (
+          <div className="absolute inset-0 bg-gradient-to-b from-sky-200 to-sky-100 flex items-center justify-center p-8">
+            <div className="text-center max-w-md">
+              <h2 className="text-2xl font-bold text-gray-800 mb-4">Desktop Experience Recommended</h2>
+              <p className="text-gray-600 mb-6">
+                The full 3D warehouse visualization is available on desktop devices. 
+                Use the sidebar to explore available suites and submit requests.
+              </p>
+            </div>
+          </div>
+        )}
+        
+        {/* CRITICAL FIX: Disable WebGL canvas entirely on iOS/mobile to prevent crash */}
+        {canvasReady && !PerfFlags.isMobile && (
         <RootCanvas
-          shadows
+          shadows={!PerfFlags.isIOS}
+          dpr={PerfFlags.isIOS ? 1 : [1, 2]}
           camera={{ position: [-10, 10, -14], fov: 45, near: 0.5, far: 2000 }}
           style={{
             width: '100%',
@@ -1079,13 +1132,14 @@ function App() {
           frameloop="always"
           onTierChange={setRenderTier}
           onCreated={({ camera }) => {
+            console.log('🎨 Canvas created, iOS:', PerfFlags.isIOS, 'DPR:', PerfFlags.isIOS ? 1 : window.devicePixelRatio);
             camera.lookAt(0, 0, 0);
           }}
         >
           {(tier) => (
             <>
-              {/* Environment - HDRI lighting (only for mobile-high and desktop) */}
-              {tier !== 'mobile-low' && (
+              {/* CRITICAL FIX: Disable HDRI entirely on iOS - use simple gradient instead */}
+              {tier !== 'mobile-low' && !PerfFlags.isIOS && (
                 <Environment
                   files={assetUrl("textures/kloofendal_48d_partly_cloudy_puresky_2k.hdr")}
                   background={true}
@@ -1095,24 +1149,24 @@ function App() {
                 />
               )}
               
-              {/* Simple gradient background for mobile-low */}
-              {tier === 'mobile-low' && (
+              {/* Simple gradient background for mobile-low and iOS (no HDRI memory spike) */}
+              {(tier === 'mobile-low' || PerfFlags.isIOS) && (
                 <color attach="background" args={['#87CEEB']} />
               )}
 
-              {/* Lighting System - crisp sun shadows (desktop only) */}
-              {tier !== 'mobile-low' && (
+              {/* Lighting System - iOS gets simple lighting, desktop gets full shadows */}
+              {!PerfFlags.isIOS && tier !== 'mobile-low' && (
                 <Lighting 
                   shadowBias={debugState.shadowBias}
                   shadowNormalBias={debugState.shadowNormalBias}
                 />
               )}
               
-              {/* Basic ambient light for mobile-low */}
-              {tier === 'mobile-low' && (
+              {/* Simple lighting for iOS and mobile-low (no shadows to reduce memory) */}
+              {(PerfFlags.isIOS || tier === 'mobile-low') && (
                 <>
-                  <ambientLight intensity={0.5} />
-                  <directionalLight position={[-34, 78, 28]} intensity={5.5} />
+                  <ambientLight intensity={0.6} />
+                  <directionalLight position={[-34, 78, 28]} intensity={5.5} castShadow={false} />
                 </>
               )}
               
@@ -1154,8 +1208,8 @@ function App() {
               {/* Performance Governor - mobile FPS enforcement */}
               <PerformanceGovernorComponent />
 
-              {/* Post-processing Effects - disabled on mobile for performance */}
-              {effectsReady && !deviceCapabilities.isMobile && debugState.ao && !debugState.pathtracer && (
+              {/* Post-processing Effects - enabled on desktop, disabled on mobile */}
+              {effectsReady && !deviceCapabilities.isMobile && !PerfFlags.isIOS && debugState.ao && !debugState.pathtracer && (
                 <Effects tier={renderTier} enabled={debugState.ao} />
               )}
 
@@ -1189,6 +1243,7 @@ function App() {
             </>
           )}
         </RootCanvas>
+        )}
 
 
           </div>  {/* Close scene-shell */}

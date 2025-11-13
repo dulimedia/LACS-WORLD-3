@@ -20,7 +20,10 @@
     "test:playwright:mobile": "playwright test tests/playwright.mobile.spec.ts",
     "audit:mobile": "npm run build && npm run start & sleep 5 && PREVIEW_URL=http://localhost:8080 npm run test:playwright:mobile && npx lhci autorun && pkill -f 'serve dist'",
     "test:ui": "playwright test",
-    "audit:ui": "npm run build && npm run test:ui"
+    "audit:ui": "npm run build && npm run test:ui",
+    "agent:mobile": "node agent/run-mobile-agent.mjs",
+    "agent:mobile:quick": "node agent/run-mobile-agent.mjs --quick",
+    "agent:mobile:dry": "node agent/run-mobile-agent.mjs --dry-run"
   },
   "dependencies": {
     "@react-three/drei": "^9.99.7",

@@ -167,21 +167,23 @@ body {
 /* CSS Variables for scene positioning */
 :root {
   --scene-offset: 0px;
-  --scene-left: 48px;
-  --scene-right: 40px;
-  --scene-width: calc(100vw - 48px - 40px);
+  --scene-left: 18px;
+  --scene-right: 0px;
+  --scene-width: calc(100vw - 18px);
 }
 
 body.sidebar-open {
-  --scene-offset: 272px;
-  --scene-left: 320px;
-  --scene-width: calc(100vw - 320px - 40px);
+  --scene-offset: 420px;
+  --scene-left: 420px;
+  --scene-right: 0px;
+  --scene-width: calc(100vw - 420px);
 }
 
 body.sidebar-open.floorplan-expanded {
-  --scene-offset: 592px;
-  --scene-left: 640px;
-  --scene-width: calc(100vw - 640px - 40px);
+  --scene-offset: 840px;
+  --scene-left: 840px;
+  --scene-right: 0px;
+  --scene-width: calc(100vw - 840px);
 }
 
 /* Desktop - 3D scene positioning to match sidebar states */

@@ -42,26 +42,32 @@ export function SingleEnvironmentMesh({ tier }: SingleEnvironmentMeshProps) {
     stages: { gltf: null, loadingState: 'pending' }
   }));
   
-  // For desktop, load all at once
-  // For mobile, only load minimal essential models (frame only - no others, roof, or stages)
+  // CRITICAL FIX: Mobile loads ZERO environment models to prevent crash
+  // Desktop loads all models normally
+  // Mobile shows only unit boxes (97 tiny GLBs ~86KB total) + sky gradient
   const others = !isMobile ? useGLTF('/models/environment/others2.glb') : { scene: null };
-  const frame = !isMobile ? useGLTF('/models/environment/frame-raw-14.glb') : { scene: null }; // Skip even frame on iOS
+  const frame = !isMobile ? useGLTF('/models/environment/frame-raw-14.glb') : { scene: null };
   const roof = !isMobile ? useGLTF('/models/environment/roof and walls.glb') : { scene: null };
-  const stages = !isMobile ? useGLTF('/models/environment/stages.glb') : { scene: null }; // Load stages on desktop only
+  const stages = !isMobile ? useGLTF('/models/environment/stages.glb') : { scene: null };
   
-  console.log('📱 SingleEnvironmentMesh:', { isMobile, tier, loadingModels: !isMobile ? 'all' : 'none (iOS)' });
+  console.log('📱 SingleEnvironmentMesh:', { 
+    isMobile, 
+    tier, 
+    loadingModels: !isMobile ? 'all (desktop)' : 'ZERO (mobile - crash prevention)',
+    reason: isMobile ? 'Environment models (32MB) exceed mobile memory budget (15MB max)' : 'Desktop has sufficient memory'
+  });
   
   const shadowsEnabled = gl && (gl as any).shadowMap?.enabled !== false && !isMobile;
 
-  // Sequential model loading for mobile
+  // Sequential model loading for mobile - DISABLED to prevent crash
+  // Mobile gets minimal scene: unit boxes only + sky gradient
   useEffect(() => {
-    // CRITICAL FIX: Skip ALL model loading on mobile to prevent crash
     if (!isMobile) return; // Desktop uses normal useGLTF loading
     
-    console.log('📱 Mobile detected: SKIPPING model loading to prevent crash');
-    return; // Exit early - don't load anything
-    
-    console.log('📱 Mobile detected: Starting sequential model loading...');
+    console.log('📱 Mobile detected: SKIPPING environment model loading');
+    console.log('📱 Reason: Total environment assets (32MB) exceed iOS Safari WebGL memory limit');
+    console.log('📱 Mobile will show: Unit boxes only (~86KB total) + sky gradient background');
+    return; // Exit early - mobile loads ZERO environment models
     
     const loadModel = async (url: string, name: string, overallProgress: {current: number, total: number}): Promise<GLTF> => {
       console.log(`🔄 Loading ${name}... (${overallProgress.current + 1}/${overallProgress.total})`);
@@ -492,18 +498,24 @@ export function SingleEnvironmentMesh({ tier }: SingleEnvironmentMeshProps) {
 
   return (
     <>
-      {/* Only render models that have finished loading */}
-      {(isMobile ? models.others.loadingState === 'complete' && models.others.gltf?.scene : others.scene) && (
-        <primitive object={isMobile ? models.others.gltf!.scene : others.scene} />
+      {/* Mobile: Render NOTHING (environment models skipped to prevent crash) */}
+      {/* Desktop: Render all models */}
+      {!isMobile && (
+        <>
+          {others.scene && <primitive object={others.scene} />}
+          {frame.scene && <primitive object={frame.scene} />}
+          {roof.scene && <primitive object={roof.scene} />}
+          {stages.scene && <primitive object={stages.scene} />}
+        </>
       )}
-      {(isMobile ? models.frame.loadingState === 'complete' && models.frame.gltf?.scene : frame.scene) && (
-        <primitive object={isMobile ? models.frame.gltf!.scene : frame.scene} />
-      )}
-      {(isMobile ? models.roof.loadingState === 'complete' && models.roof.gltf?.scene : roof.scene) && (
-        <primitive object={isMobile ? models.roof.gltf!.scene : roof.scene} />
-      )}
-      {(isMobile ? models.stages.loadingState === 'complete' && models.stages.gltf?.scene : stages.scene) && (
-        <primitive object={isMobile ? models.stages.gltf!.scene : stages.scene} />
+      
+      {/* Mobile gets empty scene - unit boxes will render via GLBManager */}
+      {isMobile && (
+        <group>
+          {/* Empty - just a placeholder */}
+          {/* Unit boxes (97 tiny GLBs) will render separately via GLBManager */}
+          {/* Total mobile scene: ~86KB unit boxes + sky gradient = minimal memory */}
+        </group>
       )}
     </>
   );

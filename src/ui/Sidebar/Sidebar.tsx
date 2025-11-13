@@ -4,15 +4,31 @@ import { RequestTab } from './RequestTab';
 import { SuiteDetailsTab } from './SuiteDetailsTab';
 import { useSidebarState } from './useSidebarState';
 import { useExploreState } from '../../store/exploreState';
+import { useGLBState } from '../../store/glbState';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
 export default function Sidebar() {
   const { tab, setTab, view, setView, floorPlanExpanded, setFloorPlanExpanded } = useSidebarState();
   const { drawerOpen, setDrawerOpen } = useExploreState();
+  const { clearSelection, cameraControlsRef } = useGLBState();
 
   const collapsed = !drawerOpen;
   const setCollapsed = (value: boolean) => setDrawerOpen(!value);
+
+  const handleBackToExplore = () => {
+    // Clear GLB selection (dehighlight box)
+    clearSelection();
+    
+    // Reset camera to home position
+    if (cameraControlsRef?.current) {
+      cameraControlsRef.current.reset(true);
+    }
+    
+    // Navigate back to explore view
+    setView('explore');
+    setFloorPlanExpanded(false);
+  };
 
   return (
     <>
@@ -43,10 +59,7 @@ export default function Sidebar() {
         <div className="flex-shrink-0 pb-3 border-b border-black/5">
           {view === 'details' ? (
             <button
-              onClick={() => {
-                setView('explore');
-                setFloorPlanExpanded(false);
-              }}
+              onClick={handleBackToExplore}
               className="flex items-center space-x-2 text-sm text-gray-600 hover:text-gray-900 transition"
             >
               <ChevronLeft size={16} />

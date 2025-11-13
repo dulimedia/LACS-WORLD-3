@@ -2,7 +2,6 @@
 
 :root {
   --sidebar-w: 420px;
-  --sidebar-w-collapsed: 18px;
   --sidebar-pad: 18px;
   --fab-gap: 10px;
   --banner-z: 20;
@@ -21,7 +20,7 @@
 /* Phone / small tablets */
 @media (max-width: 768px) {
   :root {
-    --sidebar-w: clamp(320px, 50vw, 50vw);
+    --sidebar-w: clamp(320px, 86vw, 380px);
     --sidebar-pad: 14px;
     --fab-gap: 8px;
   }
@@ -39,9 +38,25 @@
     transform: translateX(calc(-1 * var(--sidebar-w) + 18px));
   }
   
+  .sidebar.is-collapsed ~ .scene-wrap {
+    left: 18px;
+  }
 }
 
-/* Canvas positioning - Removed (now handled by index.css with CSS custom properties) */
+/* Canvas always full-screen behind UI */
+.scene-wrap {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: var(--sidebar-w);
+  z-index: var(--canvas-z);
+  transition: left 300ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.sidebar.is-collapsed ~ .scene-wrap {
+  left: 18px;
+}
 
 .scene-canvas {
   width: 100%;
@@ -83,7 +98,7 @@
   border-radius: 0 8px 8px 0;
   padding: 16px 8px;
   box-shadow: 4px 0 12px rgba(0, 0, 0, 0.1);
-  transition: left 300ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  transition: transform 300ms cubic-bezier(0.2, 0.8, 0.2, 1);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -95,16 +110,15 @@
   cursor: pointer;
   writing-mode: vertical-rl;
   text-orientation: mixed;
+  transform: translateX(0);
 }
 
 .sidebar-toggle:hover {
   background: rgba(249, 250, 251, 1);
 }
 
-/* When sidebar collapsed: button attaches to right edge of collapsed sidebar */
-/* Note: Can't use sibling selector since button renders before sidebar in DOM */
-.sidebar-toggle.collapsed {
-  left: var(--sidebar-w-collapsed);
+.sidebar.is-collapsed ~ .sidebar-toggle {
+  transform: translateX(calc(-1 * var(--sidebar-w) + 18px));
 }
 
 /* FAB cluster – centered horizontally in available space (right of sidebar) */

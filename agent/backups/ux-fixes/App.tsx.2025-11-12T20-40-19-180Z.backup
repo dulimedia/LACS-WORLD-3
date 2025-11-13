@@ -27,7 +27,6 @@ import { HoverToast } from './ui/HoverToast';
 import { UnitHoverPreview } from './components/UnitHoverPreview';
 import { SafariErrorBoundary } from './components/SafariErrorBoundary';
 import { MobileLoadingProgress } from './components/MobileLoadingProgress';
-import { MobileErrorBoundary } from './components/MobileErrorBoundary';
 import { Lighting } from './scene/Lighting';
 import { ShadowHelper } from './components/ShadowHelper';
 import { Effects } from './components/Effects';
@@ -1123,11 +1122,21 @@ function App() {
 
 
         
+        {/* Mobile placeholder - no 3D canvas */}
+        {PerfFlags.isMobile && (
+          <div className="absolute inset-0 bg-gradient-to-b from-sky-200 to-sky-100 flex items-center justify-center p-8">
+            <div className="text-center max-w-md">
+              <h2 className="text-2xl font-bold text-gray-800 mb-4">Desktop Experience Recommended</h2>
+              <p className="text-gray-600 mb-6">
+                The full 3D warehouse visualization is available on desktop devices. 
+                Use the sidebar to explore available suites and submit requests.
+              </p>
+            </div>
+          </div>
+        )}
         
-        
-        {/* CRITICAL FIX: Wrap canvas in error boundary to catch mobile crashes */}
-        {canvasReady && (
-        <MobileErrorBoundary>
+        {/* CRITICAL FIX: Disable WebGL canvas entirely on iOS/mobile to prevent crash */}
+        {canvasReady && !PerfFlags.isMobile && (
         <RootCanvas
           shadows={!PerfFlags.isIOS}
           dpr={PerfFlags.isIOS ? 1 : [1, 2]}
@@ -1252,14 +1261,27 @@ function App() {
             </>
           )}
         </RootCanvas>
-        </MobileErrorBoundary>
         )}
 
 
           </div>  {/* Close scene-shell */}
         
         
-        
+        {/* Mobile Layout - Top button to open sidebar */}
+        {!modelsLoading && deviceCapabilities.isMobile && !drawerOpen && (
+          <button
+            onClick={handleToggleExploreDrawer}
+            className="fixed bottom-6 left-4 z-40 bg-blue-500 text-white font-semibold py-2 px-3 rounded-lg shadow-lg hover:bg-blue-600 flex items-center space-x-2 transition-all duration-200 text-sm"
+            style={{
+              paddingBottom: 'calc(0.5rem + env(safe-area-inset-bottom))'
+            }}
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+            <span>Suites</span>
+          </button>
+        )}
 
         {/* Camera Controls - Bottom Center (Desktop) / Right Side (Mobile) */}
         {!modelsLoading && (

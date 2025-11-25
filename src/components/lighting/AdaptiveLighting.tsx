@@ -3,6 +3,7 @@ import { DirectionalLight, Scene } from 'three';
 import { fitShadowCameraToScene } from './fitShadowCamera';
 import { Environment } from '@react-three/drei';
 import type { Tier } from '../../lib/graphics/tier';
+import { assetUrl } from '../../lib/assets';
 
 interface AdaptiveLightingProps {
   scene: Scene;
@@ -37,7 +38,7 @@ export function AdaptiveLighting({ scene, tier }: AdaptiveLightingProps) {
       />
       <ambientLight intensity={0.4} />
       <Environment
-        files="/textures/kloofendal_48d_partly_cloudy_puresky_2k.hdr"
+        files={assetUrl("textures/kloofendal_48d_partly_cloudy_puresky_2k.hdr")}
         background={false}
         preset={null as any}
       />

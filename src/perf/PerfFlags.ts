@@ -40,9 +40,8 @@ export const PerfFlags = (() => {
     isIOS,
     isTouch: isTouchDevice,
     
-    // 🔥 Aggressive mobile settings - DPR = 1.0 only on mobile
-    DPR_MAX: isLow ? 1.0 : isBalanced ? 1.3 : 2.0,
-    pixelRatio: isLow ? 1.0 : isBalanced ? 1.3 : 2.0,
+    DPR_MAX: isLow ? 1.25 : isBalanced ? 1.3 : 2.0,
+    pixelRatio: isLow ? 1.25 : isBalanced ? 1.3 : 2.0,
     
     // 🔥 Texture & shadow caps - no shadows at all on mobile
     maxTextureSize: isLow ? 1024 : isBalanced ? 2048 : 4096,

@@ -47,7 +47,7 @@ function createWebGLRenderer(canvas: HTMLCanvasElement, tier: string): THREE.Web
   
   const config: any = {
     canvas,
-    alpha: false,
+    alpha: true, // Enable transparency to prevent blue flash
     antialias: false,
     powerPreference: 'default',
     logarithmicDepthBuffer: false,

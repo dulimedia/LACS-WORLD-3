@@ -116,7 +116,7 @@ body {
   display: flex;
   justify-content: center;
   align-items: center;
-  background: linear-gradient(to bottom, #f8fafc 0%, #e2e8f0 100%);
+  background: transparent; /* Prevent background bleed-through during canvas transitions */
 }
 
 .app-layout {
@@ -142,7 +142,7 @@ body {
 @media (min-width: 769px) {
   .app-viewport {
     padding: 20px;
-    background: radial-gradient(circle at top, #f6f7fb 0%, #d5dde7 100%);
+    background: transparent; /* Prevent background bleed-through during canvas transitions */
   }
   
   .scene-shell {
@@ -163,7 +163,7 @@ body {
 /* Mobile: 3D scene stays full screen, sidebar overlays on top */
 @media (max-width: 768px) {
   body {
-    background: #E3F2FD;
+    background: transparent; /* Remove blue background to prevent flash */
   }
   
   .app-viewport {

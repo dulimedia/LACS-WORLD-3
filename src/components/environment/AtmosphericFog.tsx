@@ -7,7 +7,7 @@ export function AtmosphericFog() {
 
   useEffect(() => {
     scene.fog = new FogExp2(0xc0d6e8, 0.0008);
-    gl.setClearColor(scene.fog.color);
+    // Remove gl.setClearColor - let makeRenderer handle clear color for transparency
   }, [scene, gl]);
 
   return null;

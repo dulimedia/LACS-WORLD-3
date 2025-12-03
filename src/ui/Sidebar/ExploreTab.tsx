@@ -11,7 +11,7 @@ const SIZE_OPTIONS = [
   { value: '<1500', label: '<1,500 sf', min: 0, max: 1499 },
   { value: '1500-4000', label: '1,500-4,000 sf', min: 1500, max: 4000 },
   { value: '5000-9000', label: '5,000-9,000 sf', min: 5000, max: 9000 },
-  { value: '9001-18000', label: '9,001-18,000 sf', min: 9001, max: 18000 },
+  { value: '9001-18500', label: '9,001-18,500 sf', min: 9001, max: 18500 },
 ];
 
 const STATUS_OPTIONS = [
@@ -25,10 +25,12 @@ const OFFICES_OPTIONS = [
   { value: '0', label: '0' },
   { value: '1-3', label: '1-3' },
   { value: '4-6', label: '4-6' },
-  { value: '7+', label: '7+' },
+  { value: '7-10', label: '7-10' },
+  { value: '11+', label: '11+' },
 ];
 
 export function ExploreTab() {
+  console.log('🚀🚀🚀 EXPLORE TAB RENDERED 🚀🚀🚀');
   const { 
     unitsByBuilding, 
     unitsData, 
@@ -72,6 +74,20 @@ export function ExploreTab() {
   };
 
   const groupedByBuilding = useMemo(() => {
+    // AGGRESSIVE DEBUG LOGGING
+    console.log('🔥 FILTER STATE:', { sizeFilter, statusFilter, officesFilter });
+    console.log('🔥 UNITS DATA SIZE:', unitsData.size);
+    
+    // Sample first 10 units to see their office data
+    let sampleCount = 0;
+    console.log('🔥 SAMPLE UNITS WITH OFFICE DATA:');
+    unitsData.forEach((unit, key) => {
+      if (sampleCount < 10) {
+        console.log(`  ${unit.unit_name}: offices=${unit.private_offices}, available=${unit.status}`);
+        sampleCount++;
+      }
+    });
+    
     const allBuildings = Object.keys(unitsByBuilding).sort();
     const allowedBuildings = ['Fifth Street Building', 'Maryland Building', 'Tower Building'];
     const buildings = allBuildings.filter(b => allowedBuildings.includes(b));
@@ -104,6 +120,11 @@ export function ExploreTab() {
               return;
             }
 
+            // DEBUG: Log unit data when office filter is active
+            if (officesFilter !== 'any') {
+              console.log(`🔍 Checking unit: ${unit.unit_name}, offices=${unit.private_offices}, available=${unit.status}`);
+            }
+
             let passes = true;
 
             if (showAvailableOnly && !unit.status) {
@@ -114,7 +135,10 @@ export function ExploreTab() {
               const option = SIZE_OPTIONS.find(o => o.value === sizeFilter);
               if (option && option.min !== -1 && option.max !== -1) {
                 if (unit.area_sqft < option.min || unit.area_sqft > option.max) {
+                  console.log(`📊 Size: ${unit.unit_name} (${unit.area_sqft}sf) excluded by ${option.min}-${option.max}`);
                   passes = false;
+                } else {
+                  console.log(`✅ Size: ${unit.unit_name} (${unit.area_sqft}sf) passes ${option.min}-${option.max}`);
                 }
               }
             }
@@ -132,16 +156,29 @@ export function ExploreTab() {
               }
             }
 
-            if (officesFilter !== 'any' && unit.private_offices !== undefined && unit.private_offices !== null) {
+            if (officesFilter !== 'any') {
               const officeCount = unit.private_offices;
-              if (officesFilter === '0' && officeCount !== 0) {
+              // Treat undefined/null as 0 offices
+              const normalizedCount = officeCount === undefined || officeCount === null ? 0 : officeCount;
+              
+              let officeMatches = false;
+              if (officesFilter === '0') {
+                officeMatches = normalizedCount === 0;
+              } else if (officesFilter === '1-3') {
+                officeMatches = normalizedCount >= 1 && normalizedCount <= 3;
+              } else if (officesFilter === '4-6') {
+                officeMatches = normalizedCount >= 4 && normalizedCount <= 6;
+              } else if (officesFilter === '7-10') {
+                officeMatches = normalizedCount >= 7 && normalizedCount <= 10;
+              } else if (officesFilter === '11+') {
+                officeMatches = normalizedCount >= 11;
+              }
+              
+              if (!officeMatches) {
+                console.log(`❌ Office: ${unit.unit_name} (${normalizedCount}) excluded by '${officesFilter}'`);
                 passes = false;
-              } else if (officesFilter === '1-3' && (officeCount < 1 || officeCount > 3)) {
-                passes = false;
-              } else if (officesFilter === '4-6' && (officeCount < 4 || officeCount > 6)) {
-                passes = false;
-              } else if (officesFilter === '7+' && officeCount < 7) {
-                passes = false;
+              } else {
+                console.log(`✅ Office: ${unit.unit_name} (${normalizedCount}) passes '${officesFilter}'`);
               }
             }
 
@@ -193,6 +230,11 @@ export function ExploreTab() {
               return;
             }
 
+            // DEBUG: Log unit data when office filter is active
+            if (officesFilter !== 'any') {
+              console.log(`🔍 Checking unit: ${unit.unit_name}, offices=${unit.private_offices}, available=${unit.status}`);
+            }
+
             let passes = true;
 
             if (showAvailableOnly && !unit.status) {
@@ -203,7 +245,10 @@ export function ExploreTab() {
               const option = SIZE_OPTIONS.find(o => o.value === sizeFilter);
               if (option && option.min !== -1 && option.max !== -1) {
                 if (unit.area_sqft < option.min || unit.area_sqft > option.max) {
+                  console.log(`📊 Size: ${unit.unit_name} (${unit.area_sqft}sf) excluded by ${option.min}-${option.max}`);
                   passes = false;
+                } else {
+                  console.log(`✅ Size: ${unit.unit_name} (${unit.area_sqft}sf) passes ${option.min}-${option.max}`);
                 }
               }
             }
@@ -221,16 +266,29 @@ export function ExploreTab() {
               }
             }
 
-            if (officesFilter !== 'any' && unit.private_offices !== undefined && unit.private_offices !== null) {
+            if (officesFilter !== 'any') {
               const officeCount = unit.private_offices;
-              if (officesFilter === '0' && officeCount !== 0) {
+              // Treat undefined/null as 0 offices
+              const normalizedCount = officeCount === undefined || officeCount === null ? 0 : officeCount;
+              
+              let officeMatches = false;
+              if (officesFilter === '0') {
+                officeMatches = normalizedCount === 0;
+              } else if (officesFilter === '1-3') {
+                officeMatches = normalizedCount >= 1 && normalizedCount <= 3;
+              } else if (officesFilter === '4-6') {
+                officeMatches = normalizedCount >= 4 && normalizedCount <= 6;
+              } else if (officesFilter === '7-10') {
+                officeMatches = normalizedCount >= 7 && normalizedCount <= 10;
+              } else if (officesFilter === '11+') {
+                officeMatches = normalizedCount >= 11;
+              }
+              
+              if (!officeMatches) {
+                console.log(`❌ Office: ${unit.unit_name} (${normalizedCount}) excluded by '${officesFilter}'`);
                 passes = false;
-              } else if (officesFilter === '1-3' && (officeCount < 1 || officeCount > 3)) {
-                passes = false;
-              } else if (officesFilter === '4-6' && (officeCount < 4 || officeCount > 6)) {
-                passes = false;
-              } else if (officesFilter === '7+' && officeCount < 7) {
-                passes = false;
+              } else {
+                console.log(`✅ Office: ${unit.unit_name} (${normalizedCount}) passes '${officesFilter}'`);
               }
             }
 
@@ -335,16 +393,21 @@ export function ExploreTab() {
           }
 
           // Offices filter
-          if (officesFilter !== 'any' && unit.private_offices !== undefined && unit.private_offices !== null) {
-            const officeCount = unit.private_offices;
-            if (officesFilter === '0' && officeCount !== 0) {
+          if (officesFilter !== 'any') {
+            if (unit.private_offices === undefined || unit.private_offices === null) {
+              // Exclude units without office data when filter is active
               passes = false;
-            } else if (officesFilter === '1-3' && (officeCount < 1 || officeCount > 3)) {
-              passes = false;
-            } else if (officesFilter === '4-6' && (officeCount < 4 || officeCount > 6)) {
-              passes = false;
-            } else if (officesFilter === '7+' && officeCount < 7) {
-              passes = false;
+            } else {
+              const officeCount = unit.private_offices;
+              if (officesFilter === '0' && officeCount !== 0) {
+                passes = false;
+              } else if (officesFilter === '1-3' && (officeCount < 1 || officeCount > 3)) {
+                passes = false;
+              } else if (officesFilter === '4-6' && (officeCount < 4 || officeCount > 6)) {
+                passes = false;
+              } else if (officesFilter === '7+' && officeCount < 7) {
+                passes = false;
+              }
             }
           }
 
@@ -403,7 +466,10 @@ export function ExploreTab() {
             <span className="text-xs font-semibold uppercase tracking-wide text-black/60 mb-1 block"># of Offices</span>
             <select
               value={officesFilter}
-              onChange={(e) => setOfficesFilter(e.target.value)}
+              onChange={(e) => {
+                console.log('🎯 OFFICE FILTER CHANGED TO:', e.target.value);
+                setOfficesFilter(e.target.value);
+              }}
               className="w-full text-xs px-2 py-1.5 rounded border border-black/10 bg-white"
             >
               {OFFICES_OPTIONS.map(opt => (
@@ -518,6 +584,7 @@ export function ExploreTab() {
           )}
         </>
       )}
+
 
       <div className={isMobile ? "mt-2 space-y-1" : "mt-4 space-y-2"}>
         {groupedByBuilding.map(b => (

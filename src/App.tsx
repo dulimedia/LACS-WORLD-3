@@ -99,7 +99,7 @@ function AdaptivePixelRatio() {
   return null;
 }
 
-const CSV_URL = assetUrl('unit-data.csv');
+const CSV_URL = assetUrl('unit-data-with-offices.csv');
 
 // Legacy HDRI Environment component - kept for fallback but not used by default
 const LegacyHDRIEnvironment = React.memo(() => {
@@ -734,40 +734,11 @@ function App() {
     }
   }, []);
   
-  // Monitor WebGL context health and force recovery if lost
-  useEffect(() => {
-    if (!canvasReady || !sceneEnabled) return;
-    
-    const checkContextHealth = () => {
-      const canvas = document.querySelector('canvas') as HTMLCanvasElement;
-      if (!canvas) {
-        console.warn('⚠️ Canvas element not found');
-        return;
-      }
-      
-      const gl = canvas.getContext('webgl') || canvas.getContext('webgl2');
-      
-      if (!gl) {
-        console.error('❌ WebGL context is NULL/UNDEFINED - forcing page reload');
-        localStorage.setItem('webgl-recovery-attempt', Date.now().toString());
-        setTimeout(() => {
-          window.location.reload();
-        }, 100);
-        return;
-      }
-      
-      if (gl.isContextLost && gl.isContextLost()) {
-        console.error('❌ WebGL context is LOST - waiting for restore event');
-        return;
-      }
-      
-      console.log('✅ WebGL context is healthy');
-    };
-    
-    const healthCheckInterval = setInterval(checkContextHealth, 2000);
-    
-    return () => clearInterval(healthCheckInterval);
-  }, [canvasReady, sceneEnabled, selectedUnitKey]);
+  // DISABLED: Context health monitor was causing "Canvas has existing context" error
+  // The webglcontextlost/restored event handlers above are sufficient
+  // useEffect(() => {
+  //   // Context health check disabled - was conflicting with R3F
+  // }, [canvasReady, sceneEnabled, selectedUnitKey]);
 
   // Handle window resize for proper canvas resizing
   useEffect(() => {
@@ -1068,6 +1039,13 @@ function App() {
   }, []);
   
   const handleExpandFloorplan = useCallback((floorplanUrl: string, unitName: string, unitData?: any) => {
+    // Disable floorplan popup on mobile devices to prevent accidental triggers
+    const isMobile = window.innerWidth < 768;
+    if (isMobile) {
+      console.log('🚫 Floorplan popup disabled on mobile device');
+      return;
+    }
+    
     setFloorplanPopupData({
       floorplanUrl,
       unitName,
@@ -1293,8 +1271,8 @@ function App() {
         <MobileErrorBoundary>
         {console.log('🎬 Rendering RootCanvas - canvasReady:', canvasReady, 'sceneEnabled:', sceneEnabled)}
         <RootCanvas
-          shadows={!PerfFlags.isIOS}
-          dpr={PerfFlags.isIOS ? 1 : [1, 2]}
+          shadows={mobileSettings.shadows}
+          dpr={mobileSettings.pixelRatio}
           camera={{ position: [-10, 10, -14], fov: 45, near: 0.5, far: 2000 }}
           style={{
             width: '100%',
@@ -1305,47 +1283,61 @@ function App() {
           frameloop={PerfFlags.isIOS && showFloorplanPopup ? "demand" : "always"}
           onTierChange={setRenderTier}
           onCreated={({ camera }) => {
-            console.log('🎨 Canvas created, iOS:', PerfFlags.isIOS, 'DPR:', PerfFlags.isIOS ? 1 : window.devicePixelRatio);
+            console.log('🎨 Canvas created - Mobile safe-mode:', deviceCapabilities.isMobile);
+            console.log('  - DPR:', mobileSettings.pixelRatio);
+            console.log('  - Shadows:', mobileSettings.shadows);
+            console.log('  - HDRI res:', mobileSettings.hdriResolution);
+            console.log('  - Texture max:', mobileSettings.textureSize);
             camera.lookAt(0, 0, 0);
           }}
         >
           {(tier) => (
             <>
-              {/* HDRI Environment - Enabled for all devices including iOS with lowest settings */}
+              {/* HDRI Environment - Using mobile-safe preset to prevent context loss */}
               <Environment
                 files={assetUrl("textures/kloofendal_48d_partly_cloudy_puresky_2k.hdr")}
                 background={true}
-                backgroundIntensity={PerfFlags.isIOS ? 0.6 : tier === 'mobile-low' ? 1.4 : tier === 'mobile-high' ? 1.2 : 1.6}
-                environmentIntensity={PerfFlags.isIOS ? 0.5 : tier === 'mobile-low' ? 1.0 : tier === 'mobile-high' ? 0.8 : 1.2}
-                resolution={PerfFlags.isIOS ? 128 : tier === 'mobile-low' ? 256 : tier === 'mobile-high' ? 512 : 1024}
-                onLoad={() => console.log('✅ HDR Environment loaded successfully')}
-                onError={(error) => console.error('❌ HDR Environment failed to load:', error)}
+                backgroundIntensity={deviceCapabilities.isMobile ? 0.4 : 1.6}
+                environmentIntensity={deviceCapabilities.isMobile ? 0.3 : 1.2}
+                resolution={mobileSettings.hdriResolution}
+                onLoad={() => console.log('✅ HDRI loaded - resolution:', mobileSettings.hdriResolution)}
+                onError={(error) => console.error('❌ HDRI failed:', error)}
               />
 
-              {/* Adaptive Performance-Based Lighting System */}
-              {!PerfFlags.isIOS && tier !== 'mobile-low' && sceneRef.current && (
+              {/* Lighting System - Mobile-safe preset uses simple lighting */}
+              {mobileSettings.useSimpleLighting ? (
                 <>
-                  <AdaptiveLighting scene={sceneRef.current} tier={tier} />
-                  <SoftShadowsController tier={tier} />
+                  {/* MOBILE SAFE-MODE: Basic ambient + directional only */}
+                  <ambientLight intensity={0.4} />
+                  <directionalLight 
+                    position={[-34, 78, 28]} 
+                    intensity={4.0} 
+                    castShadow={false}
+                  />
+                  {console.log('💡 Using SIMPLE LIGHTING (mobile safe-mode)')}
                 </>
-              )}
-              
-              {/* Simple lighting for iOS and mobile-low (no shadows to reduce memory) */}
-              {(PerfFlags.isIOS || tier === 'mobile-low') && (
+              ) : (
                 <>
-                  <ambientLight intensity={PerfFlags.isIOS ? 0.35 : 0.6} />
-                  <directionalLight position={[-34, 78, 28]} intensity={PerfFlags.isIOS ? 3.5 : 5.5} castShadow={false} />
+                  {/* DESKTOP: Adaptive lighting with shadows */}
+                  {sceneRef.current && (
+                    <>
+                      <AdaptiveLighting scene={sceneRef.current} tier={tier} />
+                      <SoftShadowsController tier={tier} />
+                    </>
+                  )}
                 </>
               )}
               
               {/* Shadow Debug Helper */}
               <ShadowHelper enabled={debugState.showShadowHelper} />
 
-              {/* Volumetric fog for god rays - only for desktop */}
-              {tier.startsWith('desktop') && <fogExp2 attach="fog" args={['#b8d0e8', 0.004]} />}
-
-              {/* Adaptive Atmospheric Fog - Desktop only (mobile fog causes blue-gray tint) */}
-              {!deviceCapabilities.isMobile && <AtmosphericFog />}
+              {/* Fog - Disabled on mobile per safe-mode preset */}
+              {!mobileSettings.disableFog && (
+                <>
+                  {tier.startsWith('desktop') && <fogExp2 attach="fog" args={['#b8d0e8', 0.004]} />}
+                  <AtmosphericFog />
+                </>
+              )}
 
               {/* Capture scene and gl for external callbacks */}
               <SceneCapture sceneRef={sceneRef} glRef={glRef} />
@@ -1379,10 +1371,11 @@ function App() {
               {/* Performance Governor - mobile FPS enforcement */}
               <PerformanceGovernorComponent />
 
-              {/* Adaptive Post-processing Effects - enabled on desktop only */}
-              {!SAFE && effectsReady && !PerfFlags.isMobile && !deviceCapabilities.isMobile && !PerfFlags.isIOS && debugState.ao && !debugState.pathtracer && (
+              {/* Post-processing - Disabled on mobile per safe-mode preset */}
+              {!mobileSettings.postProcessing && !SAFE && effectsReady && debugState.ao && !debugState.pathtracer && (
                 <AdaptiveEffects tier={tier} />
               )}
+              {mobileSettings.postProcessing && console.log('⚠️ Post-processing DISABLED (mobile safe-mode)')}
 
               {/* GPU Path Tracer - mutually exclusive with post-processing */}
               {effectsReady && debugState.pathtracer && (
@@ -1515,24 +1508,26 @@ function App() {
         />
       )}
 
-      {/* Explore Suites Details Popup - Center of Scene */}
-      <UnitDetailsPopup
-        unit={selectedUnitKey ? getUnitData(selectedUnitKey) || {
-          unit_key: selectedUnitKey,
-          unit_name: selectedUnitKey.toUpperCase(),
-          status: 'Unknown',
-          recipients: [],
-          area_sqft: undefined,
-          price_per_sqft: undefined,
-          lease_term: undefined,
-          notes: 'Unit data not available in CSV',
-          floorplan_url: undefined
-        } as any : null}
-        isOpen={unitDetailsOpen}
-        onClose={() => {
-          setUnitDetailsOpen(false);
-        }}
-      />
+      {/* Explore Suites Details Popup - Center of Scene (Desktop Only) */}
+      {!deviceCapabilities.isMobile && !PerfFlags.isMobile && (
+        <UnitDetailsPopup
+          unit={selectedUnitKey ? getUnitData(selectedUnitKey) || {
+            unit_key: selectedUnitKey,
+            unit_name: selectedUnitKey.toUpperCase(),
+            status: 'Unknown',
+            recipients: [],
+            area_sqft: undefined,
+            price_per_sqft: undefined,
+            lease_term: undefined,
+            notes: 'Unit data not available in CSV',
+            floorplan_url: undefined
+          } as any : null}
+          isOpen={unitDetailsOpen}
+          onClose={() => {
+            setUnitDetailsOpen(false);
+          }}
+        />
+      )}
 
       {/* Request Form */}
       <UnitRequestForm

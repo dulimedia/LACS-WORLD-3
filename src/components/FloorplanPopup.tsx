@@ -88,11 +88,11 @@ export const FloorplanPopup: React.FC<FloorplanPopupProps> = ({
   }, [isOpen, scale, isFullscreen, onClose]);
 
   const handleZoomIn = () => {
-    setScale(prev => Math.min(prev * 1.25, 5));
+    setScale(prev => Math.min(prev * 1.5, 5)); // Increased from 1.25 to 1.5 (50% vs 25%)
   };
 
   const handleZoomOut = () => {
-    setScale(prev => Math.max(prev / 1.25, 0.1));
+    setScale(prev => Math.max(prev / 1.5, 0.1)); // Increased from 1.25 to 1.5 (50% vs 25%)
   };
 
   const handleReset = () => {

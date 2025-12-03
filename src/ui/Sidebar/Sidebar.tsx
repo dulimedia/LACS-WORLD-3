@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useCallback } from 'react';
 import { detectDevice } from '../../utils/deviceDetection';
 import { ExploreTab } from './ExploreTab';
 import { RequestTab } from './RequestTab';
@@ -32,13 +32,39 @@ export default function Sidebar() {
     
     // Reset camera to home position
     if (cameraControlsRef?.current) {
-      cameraControlsRef.current.reset(true);
+      // Use instant reset on mobile to prevent WebGL context loss
+      const isMobile = window.innerWidth < 768;
+      cameraControlsRef.current.reset(!isMobile); // false = instant on mobile, true = animated on desktop
     }
     
     // Navigate back to explore view
     setView('explore');
     setFloorPlanExpanded(false);
   };
+
+  // Responsive sidebar width based on view and device
+  const updateSidebarWidth = useCallback(() => {
+    const root = document.documentElement;
+    const mobile = window.innerWidth < 768;
+
+    // CRITICAL: Don't change --sidebar-w on mobile to prevent canvas resize and WebGL context loss
+    if (mobile) {
+      return; // Keep mobile sidebar width constant to prevent canvas resize
+    }
+
+    const exploreWidth = '360px';
+    const detailsWidth = '420px';
+
+    root.style.setProperty('--sidebar-w', view === 'details' ? detailsWidth : exploreWidth);
+  }, [view]);
+
+  useEffect(() => {
+    updateSidebarWidth();
+
+    const onResize = () => updateSidebarWidth();
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, [updateSidebarWidth]);
 
   useEffect(() => {
     MobileDiagnostics.log('sidebar', 'state update', {

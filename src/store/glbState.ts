@@ -536,6 +536,9 @@ export const useGLBState = create<GLBState>((set, get) => ({
       logger.warn('CAMERA', '⚠️', 'No camera controls ref available');
       return;
     }
+    
+    // MOBILE OPTIMIZATION: Use instant positioning instead of animation to prevent GPU pressure
+    const isMobile = window.innerWidth < 768;
 
     const controls = cameraControlsRef.current;
     
@@ -570,8 +573,8 @@ export const useGLBState = create<GLBState>((set, get) => ({
 
     // Calculate camera position for straight-on, less elevated view
     const baseHeight = unitPosition.y || 0; // Fallback to 0 if unitPosition.y is undefined
-    const eyeLevelHeight = baseHeight + 3; // Match unit height more closely (reduced from 8)
-    const horizontalDistance = 12; // Closer to building for better framing (reduced from 15)
+    const eyeLevelHeight = baseHeight + (isMobile ? 2 : 3); // Lower on mobile for closer view
+    const horizontalDistance = isMobile ? 8 : 12; // Much closer on mobile for simpler rendering
     let cameraX, cameraZ;
     
     // Building-specific camera positioning for straight-on views
@@ -599,19 +602,34 @@ export const useGLBState = create<GLBState>((set, get) => ({
     const targetY = baseHeight; // Exact unit height for straight-on view
     const targetPosition = new THREE.Vector3(unitPosition.x, targetY, unitPosition.z);
 
-    // Use CameraControls API for smooth animation to new position
+    // Use CameraControls API - mobile gets instant positioning, desktop gets smooth animation
     try {
-      // Animate to the new camera position and target
-      controls.setLookAt(
-        cameraPosition.x, cameraPosition.y, cameraPosition.z, // Camera position
-        targetPosition.x, targetPosition.y, targetPosition.z, // Target position
-        true // Enable smooth animation
-      );
+      if (isMobile) {
+        // MOBILE: Instant positioning to prevent GPU memory pressure during animation
+        logger.log('CAMERA', '📱', 'Using instant camera positioning on mobile');
+        controls.setLookAt(
+          cameraPosition.x, cameraPosition.y, cameraPosition.z, // Camera position
+          targetPosition.x, targetPosition.y, targetPosition.z, // Target position
+          false // No animation - instant positioning
+        );
+        
+        // Force immediate update and render to fix timing glitch
+        controls.update(0); // Force synchronous update
+        set({ isCameraAnimating: false }); // Trigger state change to force re-render
+      } else {
+        // DESKTOP: Smooth animation as before
+        controls.setLookAt(
+          cameraPosition.x, cameraPosition.y, cameraPosition.z, // Camera position
+          targetPosition.x, targetPosition.y, targetPosition.z, // Target position
+          true // Enable smooth animation
+        );
+      }
       
       logger.log('CAMERA', '📷', `Positioned camera for ${building}:`, {
         cameraPos: { x: cameraPosition.x, y: cameraPosition.y, z: cameraPosition.z },
         targetPos: { x: targetPosition.x, y: targetPosition.y, z: targetPosition.z },
-        unit
+        unit,
+        mode: isMobile ? 'instant' : 'animated'
       });
     } catch (error) {
       logger.error('Error positioning camera:', error);

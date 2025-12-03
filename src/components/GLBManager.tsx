@@ -20,6 +20,62 @@ interface GLBUnitProps {
 
 const FADE_DURATION = 0.8;
 
+// MOBILE FIX: Share materials globally across all GLBUnit instances
+// Creating materials per-unit causes GPU memory fragmentation on mobile
+const sharedMaterialsCache = {
+  selected: null as THREE.MeshStandardMaterial | null,
+  hovered: null as THREE.MeshStandardMaterial | null,
+  filtered: null as THREE.MeshStandardMaterial | null,
+};
+
+const getSharedSelectedMaterial = (): THREE.MeshStandardMaterial => {
+  if (!sharedMaterialsCache.selected) {
+    sharedMaterialsCache.selected = new THREE.MeshStandardMaterial({
+      color: SELECTED_MATERIAL_CONFIG.color,
+      emissive: SELECTED_MATERIAL_CONFIG.emissive,
+      emissiveIntensity: 0,
+      metalness: SELECTED_MATERIAL_CONFIG.metalness,
+      roughness: SELECTED_MATERIAL_CONFIG.roughness,
+      transparent: true,
+      opacity: 0,
+    });
+    console.log('📦 Created shared SELECTED material (mobile optimization)');
+  }
+  return sharedMaterialsCache.selected;
+};
+
+const getSharedHoveredMaterial = (): THREE.MeshStandardMaterial => {
+  if (!sharedMaterialsCache.hovered) {
+    sharedMaterialsCache.hovered = new THREE.MeshStandardMaterial({
+      color: HOVERED_MATERIAL_CONFIG.color || '#ffffff',
+      emissive: HOVERED_MATERIAL_CONFIG.emissive,
+      emissiveIntensity: 0,
+      metalness: HOVERED_MATERIAL_CONFIG.metalness || 0.5,
+      roughness: HOVERED_MATERIAL_CONFIG.roughness || 0.5,
+      transparent: true,
+      opacity: 0.8,
+    });
+    console.log('📦 Created shared HOVERED material (mobile optimization)');
+  }
+  return sharedMaterialsCache.hovered;
+};
+
+const getSharedFilteredMaterial = (): THREE.MeshStandardMaterial => {
+  if (!sharedMaterialsCache.filtered) {
+    sharedMaterialsCache.filtered = new THREE.MeshStandardMaterial({
+      color: FILTER_HIGHLIGHT_CONFIG.color,
+      emissive: FILTER_HIGHLIGHT_CONFIG.emissive,
+      emissiveIntensity: 0,
+      metalness: FILTER_HIGHLIGHT_CONFIG.metalness,
+      roughness: FILTER_HIGHLIGHT_CONFIG.roughness,
+      transparent: FILTER_HIGHLIGHT_CONFIG.transparent,
+      opacity: 0,
+    });
+    console.log('📦 Created shared FILTERED material (mobile optimization)');
+  }
+  return sharedMaterialsCache.filtered;
+};
+
 const GLBUnit: React.FC<GLBUnitProps> = React.memo(({ node }) => {
   const { selectedUnit, selectedBuilding, selectedFloor, hoveredUnit } = useGLBState();
   const { selectedUnitKey, hoveredUnitKey } = useExploreState();
@@ -33,16 +89,14 @@ const GLBUnit: React.FC<GLBUnitProps> = React.memo(({ node }) => {
   
   const shouldLoad = isSelected || isHovered || isFiltered;
   
+  // MOBILE FIX: useGLTF has internal caching - don't dispose the scene
+  // The leak was from repeatedly creating/unmounting components
   const { scene } = useGLTF(node.path);
   
   const groupRef = useRef<THREE.Group>(null);
   const originalMaterialsRef = useRef<Map<string, THREE.Material | THREE.Material[]>>(new Map());
   const fadeProgressRef = useRef(0);
   const targetStateRef = useRef<'none' | 'selected' | 'hovered' | 'filtered'>('none');
-  
-  const selectedMaterialRef = useRef<THREE.MeshStandardMaterial>();
-  const hoveredMaterialsRef = useRef<Map<string, THREE.MeshStandardMaterial>>(new Map());
-  const filteredMaterialRef = useRef<THREE.MeshStandardMaterial>();
 
   useEffect(() => {
     if (scene && originalMaterialsRef.current.size === 0) {
@@ -103,61 +157,29 @@ const GLBUnit: React.FC<GLBUnitProps> = React.memo(({ node }) => {
           const originalMaterial = originalMaterialsRef.current.get(child.uuid);
           
           if (targetStateRef.current === 'selected') {
-            if (!selectedMaterialRef.current) {
-              selectedMaterialRef.current = new THREE.MeshStandardMaterial({
-                color: SELECTED_MATERIAL_CONFIG.color,
-                emissive: SELECTED_MATERIAL_CONFIG.emissive,
-                emissiveIntensity: 0,
-                metalness: SELECTED_MATERIAL_CONFIG.metalness,
-                roughness: SELECTED_MATERIAL_CONFIG.roughness,
-                transparent: true,
-                opacity: 0,
-              });
-            }
+            const sharedMaterial = getSharedSelectedMaterial();
             if (!child.material || !(child.material as any).__isAnimatedMaterial) {
-              (selectedMaterialRef.current as any).__isAnimatedMaterial = true;
-              child.material = selectedMaterialRef.current;
+              (sharedMaterial as any).__isAnimatedMaterial = true;
+              child.material = sharedMaterial;
             }
             const mat = child.material as THREE.MeshStandardMaterial;
             mat.opacity = fadeProgressRef.current;
             mat.emissiveIntensity = SELECTED_MATERIAL_CONFIG.emissiveIntensity * fadeProgressRef.current;
             child.visible = true;
           } else if (targetStateRef.current === 'hovered') {
-            if (!hoveredMaterialsRef.current.has('shared')) {
-              const hoveredMaterial = new THREE.MeshStandardMaterial({
-                color: HOVERED_MATERIAL_CONFIG.color || '#ffffff',
-                emissive: HOVERED_MATERIAL_CONFIG.emissive,
-                emissiveIntensity: 0,
-                metalness: HOVERED_MATERIAL_CONFIG.metalness || 0.5,
-                roughness: HOVERED_MATERIAL_CONFIG.roughness || 0.5,
-                transparent: true,
-                opacity: 0.8,
-              });
-              hoveredMaterialsRef.current.set('shared', hoveredMaterial);
-            }
+            const sharedMaterial = getSharedHoveredMaterial();
             if (!child.material || !(child.material as any).__isAnimatedMaterial) {
-              const sharedMat = hoveredMaterialsRef.current.get('shared')!;
-              (sharedMat as any).__isAnimatedMaterial = true;
-              child.material = sharedMat;
+              (sharedMaterial as any).__isAnimatedMaterial = true;
+              child.material = sharedMaterial;
             }
             const mat = child.material as THREE.MeshStandardMaterial;
             mat.emissiveIntensity = HOVERED_MATERIAL_CONFIG.emissiveIntensity * fadeProgressRef.current;
             child.visible = true;
           } else if (targetStateRef.current === 'filtered') {
-            if (!filteredMaterialRef.current) {
-              filteredMaterialRef.current = new THREE.MeshStandardMaterial({
-                color: FILTER_HIGHLIGHT_CONFIG.color,
-                emissive: FILTER_HIGHLIGHT_CONFIG.emissive,
-                emissiveIntensity: 0,
-                metalness: FILTER_HIGHLIGHT_CONFIG.metalness,
-                roughness: FILTER_HIGHLIGHT_CONFIG.roughness,
-                transparent: FILTER_HIGHLIGHT_CONFIG.transparent,
-                opacity: 0,
-              });
-            }
+            const sharedMaterial = getSharedFilteredMaterial();
             if (!child.material || !(child.material as any).__isAnimatedMaterial) {
-              (filteredMaterialRef.current as any).__isAnimatedMaterial = true;
-              child.material = filteredMaterialRef.current;
+              (sharedMaterial as any).__isAnimatedMaterial = true;
+              child.material = sharedMaterial;
             }
             const mat = child.material as THREE.MeshStandardMaterial;
             mat.opacity = FILTER_HIGHLIGHT_CONFIG.opacity * fadeProgressRef.current;
@@ -176,14 +198,8 @@ const GLBUnit: React.FC<GLBUnitProps> = React.memo(({ node }) => {
     }
   });
 
-  useEffect(() => {
-    return () => {
-      selectedMaterialRef.current?.dispose();
-      hoveredMaterialsRef.current.forEach(mat => mat.dispose());
-      hoveredMaterialsRef.current.clear();
-      filteredMaterialRef.current?.dispose();
-    };
-  }, []);
+  // Material cleanup handled globally now - don't dispose shared materials per-component
+  // Don't dispose useGLTF scenes - they're cached by drei internally
 
   return (
     <group ref={groupRef}>
@@ -215,6 +231,8 @@ export const GLBManager: React.FC = () => {
   const { isUnitActive } = useFilterStore();
   
   const isMobile = PerfFlags.isMobile;
+  
+  // Load only selected/hovered/filtered units to avoid loading broken GLBs
   const nodesToRender = useMemo(() => {
     const allNodes = Array.from(glbNodes.values());
     
@@ -233,7 +251,7 @@ export const GLBManager: React.FC = () => {
       total: allNodes.length,
       rendering: activeNodes.length,
       isMobile,
-      optimization: 'lazy load on selection'
+      optimization: 'lazy load on selection with useGLTF caching'
     });
     return activeNodes;
   }, [glbNodes, isMobile, selectedUnit, selectedBuilding, selectedFloor, hoveredUnit, isUnitActive]);

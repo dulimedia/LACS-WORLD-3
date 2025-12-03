@@ -70,7 +70,25 @@ export const detectDevice = (): DeviceCapabilities => {
   return cachedCapabilities;
 };
 
-export const getMobileOptimizedSettings = (device: DeviceCapabilities) => {
+export interface MobileRenderingPreset {
+  pixelRatio: number;
+  antialias: boolean;
+  shadows: boolean;
+  postProcessing: boolean;
+  maxLights: number;
+  textureSize: number;
+  modelComplexity: 'low' | 'medium' | 'high';
+  preserveDrawingBuffer?: boolean;
+  powerPreference?: 'default' | 'high-performance' | 'low-power';
+  failIfMajorPerformanceCaveat?: boolean;
+  useSimpleLighting: boolean;
+  hdriResolution: number;
+  disableFog: boolean;
+  disableBloom: boolean;
+  disableSSAO: boolean;
+}
+
+export const getMobileOptimizedSettings = (device: DeviceCapabilities): MobileRenderingPreset => {
   if (!device.isMobile) {
     return {
       pixelRatio: Math.min(window.devicePixelRatio, 2),
@@ -78,32 +96,51 @@ export const getMobileOptimizedSettings = (device: DeviceCapabilities) => {
       shadows: true,
       postProcessing: true,
       maxLights: 8,
-      textureSize: 1024,
-      modelComplexity: 'high'
+      textureSize: 2048,
+      modelComplexity: 'high',
+      useSimpleLighting: false,
+      hdriResolution: 1024,
+      disableFog: false,
+      disableBloom: false,
+      disableSSAO: false
     };
   }
 
-  // Mobile optimizations
-  const baseSettings = {
-    pixelRatio: device.isLowPowerDevice ? 1 : Math.min(device.devicePixelRatio, 1.5),
+  // MOBILE SAFE-MODE PRESET
+  // Aggressive settings to prevent WebGL context loss on iOS
+  const safeModeSettings: MobileRenderingPreset = {
+    pixelRatio: 1, // Always 1 on mobile to reduce GPU memory
     antialias: false, // Expensive on mobile
-    shadows: false, // Very expensive on mobile
-    postProcessing: false, // Can cause memory issues
-    maxLights: device.isLowPowerDevice ? 2 : 4,
-    textureSize: device.isLowPowerDevice ? 256 : 512,
-    modelComplexity: device.isLowPowerDevice ? 'low' : 'medium'
+    shadows: false, // Very expensive, major GPU memory consumer
+    postProcessing: false, // Can cause context loss
+    maxLights: 2, // Minimal lighting to reduce shader complexity
+    textureSize: 512, // Cap at 512px max to reduce VRAM usage
+    modelComplexity: 'low',
+    preserveDrawingBuffer: false, // Can cause memory leaks on iOS
+    powerPreference: 'low-power', // Prioritize battery/stability over performance
+    failIfMajorPerformanceCaveat: false, // Don't fail, just use software rendering if needed
+    useSimpleLighting: true, // Use basic ambient + directional, no fancy lighting
+    hdriResolution: 128, // Tiny HDRI to reduce memory (iOS context loss often from HDRI)
+    disableFog: true, // Fog adds shader complexity
+    disableBloom: true, // Post-processing effect
+    disableSSAO: true // Post-processing effect
   };
 
-  // iOS Safari specific optimizations
-  if (device.isIOS && device.isSafari) {
+  // iOS Safari gets the most aggressive settings (main source of context loss)
+  if (device.isIOS) {
+    console.log('📱 MOBILE SAFE-MODE ACTIVE: Aggressive GPU memory limits for iOS');
+    return safeModeSettings;
+  }
+
+  // Android can handle slightly more
+  if (device.isAndroid) {
     return {
-      ...baseSettings,
-      pixelRatio: 1, // iOS Safari is very sensitive to high pixel ratios
-      preserveDrawingBuffer: false, // Can cause memory leaks on iOS
-      powerPreference: 'low-power', // Prefer battery life over performance
-      failIfMajorPerformanceCaveat: true // Fail if hardware acceleration not available
+      ...safeModeSettings,
+      textureSize: 512,
+      maxLights: 3,
+      hdriResolution: 256
     };
   }
 
-  return baseSettings;
+  return safeModeSettings;
 };

@@ -1277,7 +1277,8 @@ function App() {
           style={{
             width: '100%',
             height: '100%',
-            filter: "none"
+            filter: "none",
+            backgroundColor: '#1a1a1a' // Dark fallback to prevent white flash during HDRI loading
           }}
           gl={glConfig}
           frameloop={PerfFlags.isIOS && showFloorplanPopup ? "demand" : "always"}

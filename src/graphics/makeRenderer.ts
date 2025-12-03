@@ -47,7 +47,7 @@ function createWebGLRenderer(canvas: HTMLCanvasElement, tier: string): THREE.Web
   
   const config: any = {
     canvas,
-    alpha: true, // Enable transparency to prevent blue flash
+    alpha: false, // Disable transparency to prevent white background bleed-through
     antialias: false,
     powerPreference: 'default',
     logarithmicDepthBuffer: false,
@@ -101,7 +101,7 @@ function configureRenderer(renderer: THREE.WebGLRenderer, canvas: HTMLCanvasElem
   logSafari('Tone mapping set to NoToneMapping (unified for all iOS)');
   
   renderer.useLegacyLights = false;
-  renderer.setClearColor(0x000000, 0); // Transparent black - let HDRI handle background
+  renderer.setClearColor(0x1a1a1a, 1); // Dark fallback to prevent white flash
   
   try {
     const testScene = new THREE.Scene();
@@ -195,7 +195,7 @@ async function createWebGPURenderer(canvas: HTMLCanvasElement): Promise<any | nu
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.NoToneMapping;
     renderer.toneMappingExposure = 1.0;
-    renderer.setClearColor(0x000000, 0); // Transparent black - let HDRI handle background
+    renderer.setClearColor(0x1a1a1a, 1); // Dark fallback to prevent white flash
     
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.setSize(window.innerWidth, window.innerHeight);
